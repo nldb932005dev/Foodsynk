@@ -51,4 +51,11 @@ class AuthTokenController extends Controller
 
     return response()->json(['message' => 'Logged out']);
     }
+   public function myRecipes(Request $request)
+   {
+       return $request->user()
+           ->recipes()
+           ->latest()
+           ->paginate(10);
+   }
 }
