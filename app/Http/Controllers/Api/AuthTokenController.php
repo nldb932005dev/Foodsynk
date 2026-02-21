@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
+use App\Models\UserAccessLog;
 
 
 class AuthTokenController extends Controller
@@ -29,6 +30,13 @@ class AuthTokenController extends Controller
 
        // 3 Comprobar que el usuario existe y la contraseña es correcta
         if (! $user || ! Hash::check($request->password, $user->password)) {
+            UserAccessLog::create([
+                'user_id' => $user?->id,
+                'action' => 'login',
+                'success' => false,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
             throw ValidationException::withMessages([
                 'email' => ['Credenciales incorrectas.'],
             ]);
@@ -40,14 +48,33 @@ class AuthTokenController extends Controller
 
 
        // 5 Crear token y devolverlo
+        $token = $user->createToken($deviceName)->plainTextToken;
+
+        UserAccessLog::create([
+            'user_id' => $user->id,
+            'action' => 'login',
+            'success' => true,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         return response()->json([
-            'token' => $user->createToken($deviceName)->plainTextToken,
+            'token' => $token,
             'user'  => $user,
         ]);
     }
     public function logout(Request $request)
     {
-    $request->user()->currentAccessToken()->delete();
+    $user = $request->user();
+    $user->currentAccessToken()->delete();
+
+    UserAccessLog::create([
+        'user_id' => $user->id,
+        'action' => 'logout',
+        'success' => true,
+        'ip' => $request->ip(),
+        'user_agent' => $request->userAgent(),
+    ]);
 
     return response()->json(['message' => 'Logged out']);
     }
