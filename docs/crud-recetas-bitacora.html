@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FoodSynk - Bitacora CRUD Recetas</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --text: #1d2635;
+      --muted: #4d5c75;
+      --line: #d9e1ee;
+      --ok: #0f7b45;
+      --warn: #9a5a00;
+      --err: #a11a1a;
+      --accent: #1d4ed8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #eef3ff 0%, var(--bg) 45%);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { margin: 0 0 12px; font-size: 2rem; }
+    h2 { margin: 28px 0 10px; font-size: 1.35rem; color: #13213a; }
+    h3 { margin: 16px 0 8px; font-size: 1.05rem; }
+    p { margin: 8px 0; }
+    .meta { color: var(--muted); margin-bottom: 18px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin: 14px 0;
+      box-shadow: 0 6px 22px rgba(20, 33, 61, 0.06);
+    }
+    code {
+      background: #edf2ff;
+      color: #1e3a8a;
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+    pre {
+      overflow: auto;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      margin: 10px 0;
+    }
+    ul { margin: 8px 0 8px 20px; }
+    li { margin: 4px 0; }
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    .err { color: var(--err); font-weight: 600; }
+    .small { color: var(--muted); font-size: 0.94rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #f1f5ff; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e5edff;
+      color: #1e40af;
+      font-size: 0.8rem;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>FoodSynk - Bitacora del bloque CRUD de Recetas</h1>
+    <p class="meta">
+      Documento de seguimiento desde el momento en que empezamos el CRUD de recetas
+      (backend Laravel + Orion), incluyendo comandos, sintaxis, objetivos y resultados reales.
+    </p>
+
+    <div class="card">
+      <h2>1) Punto de partida</h2>
+      <ul>
+        <li>Tablas principales y pivotes ya creadas: <code>recipes</code>, <code>ingredients</code>, <code>categories</code>, <code>ingredient_recipe</code>, <code>category_recipe</code>.</li>
+        <li>Seguridad base ya trabajada antes del CRUD funcional: Policy owner-only, validaciones, <code>orion.use_validated=true</code>, batch desactivado.</li>
+        <li>Objetivo del bloque: que <strong>store/update</strong> de recetas guarde datos y sincronice relaciones.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>2) Comandos clave y sintaxis</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Comando</th>
+            <th>Para que sirve</th>
+            <th>Sintaxis explicada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>php artisan make:request NombreRequest</code></td>
+            <td>Crear un FormRequest para validacion.</td>
+            <td><code>make:request</code> genera clase en <code>app/Http/Requests</code>.</td>
+          </tr>
+          <tr>
+            <td><code>php artisan make:migration nombre --table=tabla</code></td>
+            <td>Crear migracion de ajuste sobre tabla existente.</td>
+            <td><code>--table</code> indica que es alteracion, no creacion inicial.</td>
+          </tr>
+          <tr>
+            <td><code>php artisan migrate</code></td>
+            <td>Aplicar migraciones pendientes.</td>
+            <td>Ejecuta metodo <code>up()</code> de cada migracion no corrida.</td>
+          </tr>
+          <tr>
+            <td><code>php -l ruta/archivo.php</code></td>
+            <td>Verificar sintaxis PHP (lint).</td>
+            <td><code>-l</code> = lint. No ejecuta logica de app ni toca BD.</td>
+          </tr>
+          <tr>
+            <td><code>php artisan tinker --execute="..."</code></td>
+            <td>Probar consultas/modelos rapido.</td>
+            <td>Ejecuta una expresion PHP dentro del contexto Laravel.</td>
+          </tr>
+          <tr>
+            <td><code>curl.exe -X POST/PATCH ...</code></td>
+            <td>Probar endpoints API.</td>
+            <td><code>-X</code> metodo HTTP, <code>-H</code> headers, <code>-d</code> body JSON.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>3) Paso a paso ejecutado (con resultados esperados vs reales)</h2>
+
+      <h3>Paso A - Integrar sync de categorias e ingredientes en controlador</h3>
+      <ul>
+        <li>Archivo tocado: <code>app/Http/Controllers/Api/RecipeController.php</code>.</li>
+        <li>Se implemento <code>afterSave(...)</code> para hacer <code>categories()->sync(...)</code> y <code>ingredients()->sync(...)</code>.</li>
+        <li>Resultado esperado: guardar receta y sincronizar pivotes en store/update.</li>
+      </ul>
+
+      <h3>Paso B - Primera prueba API de create y primeros errores</h3>
+      <ul>
+        <li>Comando de prueba: <code>curl.exe -X POST /api/recipes ...</code>.</li>
+        <li>Error real: <span class="err">Unknown column 'name' in ingredients</span> al crear ingrediente de prueba.</li>
+        <li>Diagnostico: la tabla <code>ingredients</code> usa <code>nombre</code>, no <code>name</code>.</li>
+        <li>Correccion: insercion por query builder con columna real <code>nombre</code>.</li>
+      </ul>
+
+      <h3>Paso C - Segundo error de columnas en recetas</h3>
+      <ul>
+        <li>Error real al <code>POST /api/recipes</code>: <span class="err">Unknown column 'name' in recipes</span>.</li>
+        <li>Diagnostico por migracion: la tabla <code>recipes</code> tiene <code>titulo</code>, <code>pasos</code>, <code>foto</code>, <code>time</code>.</li>
+        <li>Correcciones aplicadas:</li>
+      </ul>
+      <pre><code>- RecipeRequest: de name/instructions/photo -> titulo/pasos/foto
+- Recipe model $fillable: de name/instructions/photo -> titulo/pasos/foto</code></pre>
+
+      <h3>Paso D - Error estructural en category_recipe</h3>
+      <ul>
+        <li>Error real: <span class="err">Unknown column 'category_recipe.recipe_id'</span> al hacer <code>sync</code>.</li>
+        <li>Diagnostico con <code>SHOW COLUMNS</code>: <code>category_recipe</code> tenia solo <code>id</code>, <code>created_at</code>, <code>updated_at</code>.</li>
+        <li>Se creo migracion correctiva para anadir:</li>
+      </ul>
+      <pre><code>recipe_id (FK -> recipes.id)
+category_id (FK -> categories.id)
+unique(recipe_id, category_id)</code></pre>
+      <ul>
+        <li>Nota: se generaron 2 migraciones con mismo nombre y se aplicaron ambas; esto no rompio porque la segunda quedo sin cambios.</li>
+      </ul>
+
+      <h3>Paso E - Ajuste de sync de ingredientes al esquema real</h3>
+      <ul>
+        <li>Diagnostico: <code>ingredient_recipe</code> no tenia <code>amount/unit</code>, solo IDs.</li>
+        <li>Correccion: <code>ingredients()->sync($ingredientIds)</code> solo por IDs.</li>
+      </ul>
+
+      <h3>Paso F - Pruebas funcionales finales</h3>
+      <ul>
+        <li><span class="ok">POST /api/recipes exitoso</span>: receta creada con <code>id=2</code>.</li>
+        <li>Verificacion BD:</li>
+      </ul>
+      <pre><code>category_recipe where recipe_id=2 -> [1]
+ingredient_recipe where recipe_id=2 -> [1]</code></pre>
+      <ul>
+        <li><span class="ok">PATCH /api/recipes/2 exitoso</span> con arrays vacios para relaciones.</li>
+        <li>Verificacion BD tras update:</li>
+      </ul>
+      <pre><code>count(category_recipe where recipe_id=2) = 0
+count(ingredient_recipe where recipe_id=2) = 0</code></pre>
+      <p class="ok">Conclusión del bloque: sincronización de relaciones en store/update funcionando.</p>
+    </div>
+
+    <div class="card">
+      <h2>4) Que comandos esperabamos y que obtuvimos</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Comando</th>
+            <th>Esperado</th>
+            <th>Obtenido</th>
+            <th>Accion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>php artisan tinker ... Ingredient::create(['name'...])</code></td>
+            <td>Crear ingrediente</td>
+            <td class="err">Error columna <code>name</code></td>
+            <td>Usar <code>nombre</code> y ajustar al esquema real.</td>
+          </tr>
+          <tr>
+            <td><code>curl POST /api/recipes con name/instructions</code></td>
+            <td>Crear receta</td>
+            <td class="err">Error columna <code>recipes.name</code></td>
+            <td>Mapear request/model a <code>titulo/pasos/foto</code>.</td>
+          </tr>
+          <tr>
+            <td><code>curl POST /api/recipes con category_ids</code></td>
+            <td>Sync categorias</td>
+            <td class="err">Error columna <code>category_recipe.recipe_id</code></td>
+            <td>Migracion correctiva de pivote.</td>
+          </tr>
+          <tr>
+            <td><code>curl POST /api/recipes final</code></td>
+            <td>201/200 con receta</td>
+            <td class="ok">OK, receta creada</td>
+            <td>Validar pivotes en DB.</td>
+          </tr>
+          <tr>
+            <td><code>curl PATCH /api/recipes/2 con arrays vacios</code></td>
+            <td>Desasociar relaciones</td>
+            <td class="ok">OK, update correcto</td>
+            <td>Verificar count=0 en pivotes.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>5) Estado final al cerrar esta sesion</h2>
+      <ul>
+        <li><span class="ok">CRUD base backend de recetas operativo</span> para create/update/delete con sincronizacion de categorias e ingredientes.</li>
+        <li><span class="ok">Seguridad base activa</span>: policy owner-only, user_id desde auth, validacion en request, use_validated true, batch off.</li>
+        <li><span class="warn">Detalle tecnico a limpiar luego</span>: migracion duplicada de fix <code>category_recipe</code> (ya aplicada). Se puede dejar documentada y no tocar en caliente si no molesta.</li>
+        <li>Siguiente paso planificado: pruebas completas en Postman (store/show/index/update/delete + casos 403).</li>
+      </ul>
+    </div>
+
+    <p class="small">
+      Archivo generado para documentacion interna del proyecto FoodSynk.
+      Ruta: <code>docs/crud-recetas-bitacora.html</code>
+    </p>
+  </div>
+</body>
+</html>

@@ -50,5 +50,5 @@ return [
         'max_nested_depth' => 1,
     ],
 
-    'use_validated' => false,
+    'use_validated' => true,
 ];

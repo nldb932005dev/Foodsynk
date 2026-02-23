@@ -18,5 +18,5 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 });
 
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-    Orion::resource('recipes', RecipeController::class);
+    Orion::resource('recipes', RecipeController::class)->withoutBatch();
 });

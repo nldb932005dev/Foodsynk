@@ -18,8 +18,9 @@ class RecipePolicy
 
     public function view(User $user, Recipe $recipe): bool
     {
-        return true;
+    return $recipe->user_id === $user->id;
     }
+
 
 
     public function create(User $user): bool

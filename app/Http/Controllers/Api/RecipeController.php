@@ -2,23 +2,45 @@
 
 namespace App\Http\Controllers\Api;
 
-
 use App\Models\Recipe;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
 use Orion\Http\Controllers\Controller;
+use Orion\Http\Requests\Request;
+use App\Policies\RecipePolicy;
 
 class RecipeController extends Controller
 {
     protected $model = Recipe::class;
-    public function validationRules(): array
+    protected $policy = RecipePolicy::class;
+
+    protected function beforeStore(Request $request, Model $entity)
     {
-        return [
-            'titulo' => ['required', 'string', 'max:255'],
-            'foto'   => ['nullable', 'string', 'max:255'],
-            'pasos'  => ['required', 'string'],
-        ];
+        $entity->user_id = $request->user()->id;
     }
-     protected function beforeStore(Request $request, $recipe) { 
-        $recipe ->user_id = $request->user()->id;
+
+    protected function beforeSave(Request $request, Model $entity)
+    {
+        if (!$entity->exists) {
+            $entity->user_id = $request->user()->id;
+        }
     }
+
+    protected function afterSave(Request $request, Model $entity)
+    {
+        $validated = $request->validated();
+
+        if (array_key_exists('category_ids', $validated)) {
+            $entity->categories()->sync($validated['category_ids']);
+        }
+        if (array_key_exists('ingredients', $validated)) {
+            $ingredientIds = collect($validated['ingredients'])
+                ->pluck('id')
+                ->all();
+
+            $entity->ingredients()->sync($ingredientIds);
+        }
+
+    }
+
+
 }
