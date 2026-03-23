@@ -1,0 +1,2663 @@
+﻿10/01/2026 - 20:18 a 21:58
+Instalación de laragon
+
+creación de un proyecto con laragon : 
+
+
+
+y abre VScode
+
+Para que me instale los paquetes necesito : 
+
+
+
+Instalación de los paquetes de composer, que son los paquetes necesarios para el uso de laravel.
+
+lo dejamos vacío
+
+
+
+
+Necesitamos una clave para levantar el proyecto.
+
+
+levantar el proyecto:
+
+
+
+Creamos el repositorio de git hub
+
+dentro de mi carpeta de proyecto en local, ejecuto:
+
+
+para iniciar el proyecto.
+
+un primer commit para orientarnos.
+
+Vamos a conectar el proyecto con una base de datos.Para eso, nos vamos al “.env” del proyecto y descomentamos las líneas de la bd.
+
+Revisé la BD y me di cuenta de que había un atributo que había que cambiar a entidad.Esto se verá reflejado en el documento oficial del proyecto dónde se habla de la bd.
+Pero en resumen es qué ingredientes tenía categorías, pero como queremos que sea escalable nos viene mejor una entidad.
+
+Las tablas son: 
+Usuario(ID_Usuario(PK), nombre, email (UQ), contraseña, fecha_registro)
+
+Receta(ID_Receta(PK), título, foto, pasos, ID_Usuario(FK))
+
+Ingrediente(ID_Ingrediente(PK), nombre)
+
+Categoría (ID_Categoria(PK),nombre)
+
+Menú(ID_Menu(PK), nombre, fecha_creación, ID_Usuario(FK))
+
+Receta_Ingrediente(cantidad, unidad_medida, ID_Receta(FK)(PK), 
+ID_Ingrediente(FK)(PK))
+
+Menu_Receta(ID_Menu(FK)(PK), ID_Receta(FK)(PK))
+
+Me_gusta(fecha, ID_Usuario(FK)(PK), ID_Receta(FK)(PK))
+
+Comentario(texto, fecha, ID_Usuario(FK)(PK), ID_Receta(FK)(PK))
+
+Ingrediente_Categoría( ID_categoría(PK)(FK),ID_categoría(PK)(FK))
+
+
+Y él orden a crear las migraciones es importantes, por eso el orden de las tablas debe ser:
+Usuario(ID_Usuario(PK), nombre, email (UQ), contraseña, fecha_registro)
+Ingrediente(ID_Ingrediente(PK), nombre)
+Categoría (ID_Categoria(PK),nombre)
+Receta(ID_Receta(PK), título, foto, pasos, ID_Usuario(FK))
+Menú(ID_Menu(PK), nombre, fecha_creación, ID_Usuario(FK))
+Receta_Ingrediente(cantidad, unidad_medida, ID_Receta(FK)(PK), 
+ID_Ingrediente(FK)(PK))
+Menu_Receta(ID_Menu(FK)(PK), ID_Receta(FK)(PK))
+Me_gusta(fecha, ID_Usuario(FK)(PK), ID_Receta(FK)(PK))
+Comentario(texto, fecha, ID_Usuario(FK)(PK), ID_Receta(FK)(PK))
+Ingrediente_Categoría( ID_categoría(PK)(FK),ID_categoría(PK)(FK))
+
+
+
+
+Y ahora vamos a probar a hacer una migración que creé una tabla: 
+php artisan make:migration create_X_table
+
+Tenemos que ver la migración en nuestro proyecto, dentro de la carpeta database > migrations. Y añadirle los campos que queramos. Para esto me ayudé de la IA.
+
+ahora para que impacte en la bd tenemos que : 
+
+
+
+Ahora vamos a instalar laravel breeze en el repositorio para usar sanctum para proteger nuestras apis y ayudarnos con la tabla usuarios y lo que sería en un futuro la gestión de usuarios.
+
+Para ello vamos a: 
+ composer require laravel/breeze --dev (dev es importante para dejar claro que es una herramienta únicamente de desarrollo y que cuando se poné en producción la aplicación no se instala el paquete)(esto en la cmd de laragon)
+
+ Aquí te hace unas preguntas:
+
+
+Elegí en este caso la api, porque nosotros vamos a usar únicamente laravel para el back y react para el front.
+Con esto debería habernos creado en el proyecto una nueva migración que es importante para la seguridad de nuestras rutas, porque esto es lo que generará el token de autenticación. 
+Y también te va a generar un archivo llamado api dentro de la carpeta routes.
+
+
+
+Dentro del modelo users se guarda toda la información relacionada con la entidad usuarios de la BD.(app>models> user.php) Dentro del archivo tenemos que añadir la línea : 
+useHasApiTokens;
+
+
+para que vincule los tokens con los usuarios. 
+Por último tenemos que ejecutar la migración de los tokens que se nos han creado.
+
+
+Y acabamos el día subiendo los cambios a nuestro repositorio de github.
+
+12/1/26 19:40-22:03
+
+
+php artisan serve para levantar el proyecto.
+php artisan breeze:install api para instalar la api para que los endpoints nos lo devuelva en formato json.
+
+
+
+ Y esto nos genera estos archivos para la autenticación
+
+
+para ver que todo se ha generado de manera correcta vamos a comprobar si los endpoints están funcionando para eso vamos a utilizar este comando.
+php artisan route:list
+
+
+Estos son todos los endpoint que nos ha generado y que podemos utilizar.
+
+Después de horas de prueba con la autenticación de breeze y el csrf token desistí y encontré otra solución  porque no era capaz de securizar las rutas y elegí cambiar al bearer token que nos va a ser más sencillo con eso consumir la api desde el front.
+
+
+Para empezar tenemos que crear un controlador de autenticación nuevo, pero que es un controlador? Es una clase que se encarga de recibir las peticiones HTTP, procesarlas y devolver una respuesta.  Osea recibe los datos, los valida, ejecuta la lógica y devuelve un json (en modo api), para crearlo usamos el comando:
+php artisan make:controller Api/AuthTokenController
+Lo que hace ese comando es crearte un controlador llamado AUth token controller dentro de la carpeta api.
+
+Ahora está vacío.
+
+
+Esto lo cambiamos así:
+<?php
+
+
+namespaceApp\Http\Controllers\Api;
+
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use App\Models\User;
+
+
+classAuthTokenControllerextendsController
+{
+publicfunctionlogin(Request$request)
+    {
+// 1 Validar los datos que llegan
+$request->validate([
+'email' => ['required', 'email'],
+'password' => ['required'],
+'device_name' => ['nullable', 'string'],
+        ]);
+
+
+// 2 Buscar el usuario por email
+$user = User::where('email', $request->email)->first();
+
+
+// 3 Comprobar que el usuario existe y la contraseña es correcta
+if (! $user || ! Hash::check($request->password, $user->password)) {
+throwValidationException::withMessages([
+'email' => ['Credenciales incorrectas.'],
+            ]);
+        }
+
+
+// 4 Nombre del dispositivo (Postman, navegador, etc.)
+$deviceName = $request->device_name ?? 'api-client';
+
+
+// 5 Crear token y devolverlo
+returnresponse()->json([
+'token' => $user->createToken($deviceName)->plainTextToken,
+'user'  => $user,
+        ]);
+    }
+}
+
+*explicar para qué es esto y que esto suele ser así en casi todos los proyectos, así que nos podría ser útil para próximos proyectos futuros.
+
+Tenemos la funcionalidad de la autenticación pero no tenemos un endpoint para probarlo, por lo que tenemos que crearlo, en el archivo Api.php dentro de la carpeta routes.
+
+<?php
+
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Api\AuthTokenController;
+
+
+Route::post('/login', [AuthTokenController::class, 'login']);
+
+
+Route::middleware('auth:sanctum')->group(function () {
+Route::get('/me', function (Request$request) {
+return$request->user();
+   });
+
+
+//    Route::post('/logout', [AuthTokenController::class, 'logout']);  lo crearemos más adelante.
+});
+
+ahora para confirmar las dos rutas, utilizamos este comando:
+php artisan route:list --path=api
+que es el mismo que usamos antes pero que contiene un filtro por el que se nos va a mostrar solo aquellas que estén dentro del api.
+
+
+Ahora vamos a crear un usuario por tinker, tinker es como una consola donde podemos ejecutar código de las clases/modelos de nuestro proyecto:
+ php artisan tinker
+
+
+
+Aquí tuve un problema:
+
+
+
+
+
+Conseguimos añadir un user a nuestra base de datos para probar el login.
+
+
+
+
+Ahora desde postman, creé una nueva colección y le he añadido una nueva petición de post que es:
+
+En el body hay que añadir en las opciones que sea rau y que esté en formato JSON. Por otro lado nosotros tenemos que añadir las credenciales de nuestro usuario también en formato json. También es importante es que headers que 
+
+
+y debería salir así:
+
+Lo importante de esto es que siempre vamos a usar este token para autenticarnos desde el fronts colocándolo en los headers de las llamadas.
+
+
+Para explicar esto y que nos quede claro. Si yo ahora hago una nueva petición get, en vez de login a me, que sería mi usuario y lo mando, la petición se quedaría colgada.
+Pero si yo cojo, me voy a autorización, busco que sea del tipo bearer porque es una forma sencilla y segura y le añadimos el token que nos dio en la anterior petición, nos sale nuestro usuario.
+
+Por si acaso también lo probamos con curl.
+
+
+Por si acaso lo subí a git dónde también tuve un problemilla de cuentas.
+
+
+Ahora vamos a crear el logout.
+Para ello, nos vamos al controlador que hemos creado anteriormente, el authTokenController.php y añadimos la función:
+public function logout(Request $request)
+{
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json(['message' => 'Logged out']);
+}
+
+La mecánica siempre es la misma, creamos la función que queremos en el controlador correspondiente y creamos una ruta en el routes/api.php la llamada a esa función :
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', fn (Request $request) => $request->user());
+    Route::post('/logout', [AuthTokenController::class, 'logout']);
+});
+
+
+Ahora volvemos a postman y : 
+
+Es importante que si da error tener Accept application/json.
+
+13/01/26- 18:27-20:29 20:39-
+
+Vamos a instalar Orion, que es un paquete de laravel que nos crea endpoints automáticos, basados en controladores con un montón de ayudas como paginación, filtros, relaciones…
+
+Para instalar Orion usamos:
+composer require tailflow/laravel-orion
+
+
+ Ahora hay que publicar el archivo de configuración de Orion para poder modificarlo.Para eso usamos:
+php artisan vendor:publish --tag=orion-config
+(con artisan siempre va php o sail delante)
+
+
+
+Esto nos publica en la carpeta config un archivo llamado orion.php
+
+Dentro de este archivo tenemos que cambiar el api  que aparece al lado de guard, en auth por sanctum.
+
+Este cambio sirve para decirle a orion que vamos a usar sanctum para la autenticación de las rutas.
+
+Vamos a crear la entidad recetas dentro de la bd.
+php artisan make:model Recipe -m
+Ese comando te genera el modelo recetas y el -m del final te genera una migración para que impacte directamente en la  bd.
+
+
+Te crea las tabla Recetas, en plural.
+
+Esto lo modificamos para que se adapte a nuestra bd.
+Ahora tenemos que rellenar la migración con:
+
+
+
+
+ahora tenemos que hacer un migrate para que impacte los cambios en la bd
+
+
+ahora tenemos que hacer el controlador de la receta:
+php artisan make:controller Api/RecipeController --api
+
+De manera automática se genera este archivo con todos lo métodos para que los implementemos pero no nos hace falta porque Orion lo hace por nosotros:
+
+Por lo tanto el relleno no sirve de nada.
+
+Y le añadimos esta línea que llama al modelo recipe.
+Con esto Orión prácticamente está funcionando y lo que nos queda por hacer es añadir las rutas de los recipe al api.php del routes:
+
+
+
+Vamos a ver los endpoints que tenemos con: php artisan route:list
+
+Si nos fijamos,nos crea varios endpoints.
+
+Para poder crear una receta, tenemos que crear una entrada de datos desde el front o desde postman, por lo que tenemos que validar estos datos. Para eso, tenemos que añadir la línea: $fillable ,en el modelo.
+
+
+Luego, en el controlador tenemos que añadir una función que valide los datos que el modelo acepte coger.
+
+
+Por ahora tampoco nos dejaría meter datos porque Orion necesita un archivo de políticas que define lo que puede o no hacer el usuario.
+Para crear ese archivo de políticas para la receta tenemos que hacerlo:
+php artisan make:policy RecipePolicy --model=Recipe
+
+con esto te lo crea:
+
+
+
+Con la configuración inicial el usuario puede hacer de todo pero como por ahora no tenemos usuario, no pasaría nada:
+<?php
+
+
+namespaceApp\Policies;
+
+
+use App\Models\Recipe;
+use App\Models\User;
+
+
+classRecipePolicy
+{
+publicfunctionviewAny(User$user): bool
+    {
+returntrue;
+    }
+
+
+publicfunctionview(User$user, Recipe$recipe): bool
+    {
+returntrue;
+    }
+
+
+publicfunctioncreate(User$user): bool
+    {
+returntrue;
+    }
+
+
+publicfunctionupdate(User$user, Recipe$recipe): bool
+    {
+returntrue;
+    }
+
+
+publicfunctiondelete(User$user, Recipe$recipe): bool
+    {
+returntrue;
+    }
+}
+
+Como ya sabemos hay relaciones diferentes en las bases de datos pero Orion nos facilita mucho ese trabajo. Lo primero que hay que hacer es una migración para modificar la tabla de Recipes y ponerle el id del user para que cada usuario pueda identificar sus recetas, para ello usamos el comando:
+php artisan make:migration add_user_id_to_recipes_table --table=recipes
+
+
+Dentro de la nueva migración tenemos que añadir esto:
+<?php
+
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+
+returnnewclassextendsMigration
+{
+/*Run the migrations.*/
+publicfunctionup(): void
+    {
+Schema::table('recipes', function (Blueprint$table) {
+$table->foreignId('user_id')
+                ->constrained()
+                ->cascadeOnDelete();
+        });
+    }
+
+
+
+/*Reverse the migrations.*/
+publicfunctiondown(): void
+    {
+Schema::table('recipes', function (Blueprint$table) {
+$table->dropForeign(['user_id']);
+$table->dropColumn('user_id');
+        });
+    }
+
+
+};
+
+
+ahora hacemos un migrate:
+
+Tras tener la migración tenemos que relacionar los modelos, decirle que tipo de relación tienen, esto lo tenemos que hacer siempre para que Orion devuelva los datos correspondientes. 
+Primero vamos al modelo user, un usuario puede tener muchas recipes y una recipe pertenece a un usuario por lo que la relación es 1 N y la FK de user va a posts, por lo que añadimos lo siguiente:
+
+Y dentro de recipe.php:
+
+
+Ahora para que todo sea más seguro y el back se encargue totalmente de la base de datos lo que tenemos que hacer es una función que recoja el user del bearer token y lo asigne a esa receta, eso lo hacemos dentro del RecipeController:
+
+Ahora con esto establecido, tenemos que crear un endpoint para que un usuario pueda ver sus recetas para eso lo primero es ir al api.php dentro de routes y hacer el endpoint:
+Route::middleware('auth:sanctum')->get('/my-recipes', [AuthTokenController::class, 'myRecipes']);
+
+O puedes meterlo con el resto de nuestros propios endpoints:
+Route::middleware('auth:sanctum')->group(function () {
+Route::get('/me', fn (Request$request) => $request->user());
+Route::post('/logout', [AuthTokenController::class, 'logout']);
+Route::get('/my-recipes', [AuthTokenController::class, 'myRecipes']);
+});
+
+
+Como vimos anteriormente estamos llamando al método myRecipes pero no lo tenemos, tenemos que implementarlo, pero esta vez dentro del AuthTokenController, porque hay que acceder a la request:
+
+Para quedar mejor podemos añadir una última cosa y es cambiar el get() por paginate(10) por ejemplo, así ya tenemos los resultados paginados para el front.
+publicfunctionmyRecipes(Request$request)
+   {
+return$request->user()
+           ->recipes()
+           ->latest()
+           ->paginate(10);
+   }
+
+Por último tenemos que ajustar las policies para que cada usuario solo pueda borrar o editar sus propias recetas. Para eso tenemos que cambiar el update y delete del archivo:
+publicfunctionupdate(User$user, Recipe$recipe): bool
+    {
+return$recipe->user_id === $user->id;
+    }
+
+
+publicfunctiondelete(User$user, Recipe$recipe): bool
+    {
+return$recipe->user_id === $user->id;
+    }
+
+
+Vamos ahora con las pruebas de postman para verificar todo lo que hemos hecho. Para ello, volvemos a abrir Tinker y creamos un nuevo usuario:
+
+\App\Models\User::create([ 'name' => 'pablo', 'email' => 'pablo@test.com', 'password' => bcrypt('password'), ]);
+
+
+
+Ahora nos vamos a postman y yo cree dentro de mi colección una carpeta para los endpoints de recipes. Y creamos una nueva request con post para el create.
+
+El crontoller de recipes tiene que apuntar a orion Importante.
+Para la petición tenemos que meter el token del usuario que va a cambiar la receta, el header con accept aplication/json y el body con raw.
+Vamos a meter 2 recetas con este usuario y otras dos con el nuevo.
+
+A la hora de meter las recetas con el otro usuario. Tenemos que usar el endpoint de logout y luego loguearnos con el nuevo usuario.
+
+Como me equivoqué añadiendo una receta de más, nos viene que ni pintado porque vamos a probar el endpoint para borrar. Para ello creamos una nueva request delete, le metemos el token de nuestro usuario pq sino no va a funcionar y le metemos en la url la receta a borrar.
+
+En esta captura se ve que no nos deja borrar recetas que no sean nuestras.
+
+
+Por último hoy, hice lo del antigravity que tendrá su documento aparte.
+Y subí el proyecto a github.
+
+15/01/26 18:48-19:13 20:17-
+ Hoy vamos a enfocar nos en hacer la parte del front del login, logout y el registro.
+Vamos a crear el proyecto con:
+npm create vite@latest Foodsynk-front -- --template react
+
+no funciona el nombre con mayúsculas
+Vamos a empezar instalando axios , que es el que nos va a permitir realizar las peticiones HTTP en entornos js o node. Además de instalar react router Dom que es una librería esencial para un proyecto de React, nos permite gestionar la navegación entre diferentes componentes o páginas sin recargar la página completa.
+npm i axios react-router-dom
+
+
+Ahora viene lo importante vamos a configurar axios, lo primero dentro de la carpeta src vamos a crear una carpeta llamada api y dentro un archivo axios.js , aquí vamos a centralizar toda la lógica :
+
+Vale ahora toca crear un context , esto es super importante para poder guardar el token de manera segura en la memoria, no lo queremos dentro del localStorage, para ello usaremos hooks de react, como useState, useMemo.. .
+Como todo esto va a ir sobre la autenticación crearemos una carpeta llamada auth dentro de src y dentro tres archivos, El primero será el contexto en si, necesitamos un contexto para que guarde las variables que queremos (user y token), y que cambiemos de componente sin perder esa información. Se llamará AuthContext.jsx:
+
+Este se rellena con esto:
+import { createContext } from"react";
+
+
+exportconstAuthContext = createContext(null);
+
+El segundo tendrá toda la lógica (cerebro) para setear en el contexto el token y el usuario al con el que nos estamos logueando, se llamará AuthProvider :
+import { useMemo, useState } from"react";
+import { AuthContext } from"./AuthContext";
+
+
+exportfunctionAuthProvider({ children }) {
+const [token, setToken] = useState(null);
+const [user, setUser] = useState(null);
+
+
+constvalue = useMemo(
+   () => ({ token, setToken, user, setUser }),
+   [token, user]
+ );
+
+
+return<AuthContext.Providervalue={value}>{children}</AuthContext.Provider>;
+}
+
+Por último tendremos el hook useAuth.js que es nuestro hook personalizado para usar el contexto:
+import { useContext } from"react";
+import { AuthContext } from"./AuthContext";
+
+
+exportfunctionuseAuth() {
+constctx = useContext(AuthContext);
+if (!ctx) thrownewError("useAuth must be used inside <AuthProvider>");
+returnctx;
+}
+
+
+COMPONENTES 
+
+Ahora vamos a empezar a crear los componentes, lo primero que vamos a hacer es crear una carpeta pages para tener todo bien organizado, dentro vamos a crear el Login.jsx :
+import { useState } from"react";
+import { api } from"../api/axios";
+import { useAuth } from"../auth/useAuth";
+importstylesfrom"./Login.module.css";
+
+
+exportdefaultfunctionLogin() {
+const { setToken, setUser } = useAuth();
+
+
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [error, setError] = useState("");
+const [loading, setLoading] = useState(false);
+
+
+asyncfunctionhandleSubmit(e) {
+e.preventDefault();
+setError("");
+setLoading(true);
+
+
+try {
+constres = awaitapi.post("/login", {
+email,
+password,
+device_name:"react",
+        });
+
+
+setToken(res.data.token);
+setUser(res.data.user);
+
+
+alert("Login OK: " + res.data.user.email);
+    } catch (err) {
+constmsg =
+err?.response?.data?.message
+JSON.stringify(err?.response?.data)
+
+"Error al iniciar sesión";
+setError(msg);
+    } finally {
+setLoading(false);
+    }
+}
+
+
+return (
+<divclassName={styles.container}>
+<h2className={styles.title}>Login</h2>
+
+
+<formonSubmit={handleSubmit}className={styles.form}>
+<labelclassName={styles.label}>
+            Email
+<input
+className={styles.input}
+value={email}
+onChange={(e) =>setEmail(e.target.value)}
+autoComplete="email"
+/>
+</label>
+
+
+<labelclassName={styles.label}>
+         Password
+<input
+className={styles.input}
+value={password}
+onChange={(e) =>setPassword(e.target.value)}
+type="password"
+autoComplete="current-password"
+/>
+</label>
+
+
+<buttonclassName={styles.button}disabled={loading}>
+{loading ? "Entrando..." : "Entrar"}
+</button>
+
+
+{error && <divclassName={styles.error}>{error}</div>}
+</form>
+</div>
+ );
+}
+
+
+Ahora por mucho que lo tengamos hecho no lo estamos llamando en ningún sitio,  tenemos que meterlo en el main.jsx de react para que se vea:
+importReactfrom"react";
+importReactDOMfrom"react-dom/client";
+import { BrowserRouter, Routes, Route } from"react-router-dom";
+import { AuthProvider } from"./auth/AuthProvider";
+importLoginfrom"./pages/Login";
+
+functionApp() {
+return (
+<Routes>
+<Routepath="/"element={<Login/>}/>
+</Routes>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+<React.StrictMode>
+<AuthProvider>
+<BrowserRouter>
+<App/>
+</BrowserRouter>
+</AuthProvider>
+</React.StrictMode>
+);
+
+
+Tenemos que crearle también una hoja de estilos al login, dentro de pages que se llame Login.module.css
+
+El funcionamiento es complejo pero se entiende, el Authprovider con su contexto contiene dentro las rutas que hemos creado, en este caso solo tenemos el login, y dentro la app.
+
+Vale si todo sale bien, como dice el código deberíamos tener un alert con los datos del usuario pero nos enfrentamos a un problema muy común que nos vamos a encontrar, el error de CORS :
+
+
+
+El back no permite la entrada a ese puerto, tenemos que darselo desde el back, para ello tenemos que ir a la carpeta config y buscar el archivo cors.php:
+
+Vamos al .env y cambiamos la url del frontend : 
+
+Ahora vamos al cors.php y cambiamos el paths y el frontend url en el 5173
+
+
+Ahora hay que reiniciar el servicio de back porque cuando tu cambias en el .env, tienes que reiniciar para que se carguen los nuevos datos.
+Las personas solo tendran acceso desde el front y solo tendrá acceso a las rutas de la api.
+
+Ahora tenemos que buscar la persistencia de ese token, meterlo en el contexto para ello usaremos sessionStorage porque es más seguro que localStorage y suficiente para una SPA con autenticación por Bearer token, en el AuthProvider:
+import { useMemo, useState, useEffect } from"react";
+import { AuthContext } from"./AuthContext";
+
+
+exportfunctionAuthProvider({ children }) {
+const [token, setToken] = useState(null);
+const [user, setUser] = useState(null);
+
+
+useEffect(() => {
+if (token) {
+sessionStorage.setItem("token", token);
+   } else {
+sessionStorage.removeItem("token");
+   }
+ }, [token]);
+
+
+constvalue = useMemo(
+   () => ({ token, setToken, user, setUser }),
+   [token, user]
+ );
+
+
+return<AuthContext.Providervalue={value}>{children}</AuthContext.Provider>;
+}
+
+Ahora tenemos que cambiar el login, para que nos setee las variables y nos lleve a la página home donde vamos a ver todas las recetas de la app:
+import { useState } from"react";
+import { api } from"../api/axios";
+import { useAuth } from"../auth/useAuth";
+import { useNavigate } from"react-router-dom";
+importstylesfrom"./Login.module.css";
+
+
+exportdefaultfunctionLogin() {
+const { setToken, setUser } = useAuth();
+constnavigate = useNavigate();
+
+
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [error, setError] = useState("");
+const [loading, setLoading] = useState(false);
+
+
+asyncfunctionhandleSubmit(e) {
+e.preventDefault();
+setError("");
+setLoading(true);
+
+
+try {
+constres = awaitapi.post("/login", { email, password });
+
+
+setToken(res.data.token);
+setUser(res.data.user);
+
+
+navigate("/home");
+   } catch (err) {
+console.error("LOGIN ERROR:", err);
+
+
+constmsg =
+err?.response?.data?.message ||
+       (typeoferr?.response?.data === "string" ? err.response.data : "") ||
+       (err?.response?.data ? JSON.stringify(err.response.data) : "") ||
+err?.message ||
+"Error al iniciar sesiÃ³n";
+
+
+setError(msg);
+   } finally {
+setLoading(false);
+   }
+ }
+
+
+return (
+<divclassName={styles.container}>
+<h2className={styles.title}>Login</h2>
+
+
+<formonSubmit={handleSubmit}className={styles.form}>
+<labelclassName={styles.label}>
+         Email
+<input
+className={styles.input}
+value={email}
+onChange={(e) =>setEmail(e.target.value)}
+autoComplete="email"
+/>
+</label>
+
+
+<labelclassName={styles.label}>
+         Password
+<input
+className={styles.input}
+value={password}
+onChange={(e) =>setPassword(e.target.value)}
+type="password"
+autoComplete="current-password"
+/>
+</label>
+
+
+<buttonclassName={styles.button}disabled={loading}>
+{loading ? "Entrando..." : "Entrar"}
+</button>
+
+
+{error && <divclassName={styles.error}>{error}</div>}
+</form>
+</div>
+ );
+}
+
+Crearemos un componente Home.jsx provisional y lo importamos en el main añadiendo en routes:
+<Route path="/home" element={<Home />} />
+
+Ahora tenemos que hacer que las rutas sean seguras
+Para hacer las rutas seguras vamos a cambiar el AuthProvider, para que quede de las siguiente manera:
+import { useMemo, useState, useEffect } from"react";
+import { AuthContext } from"./AuthContext";
+
+
+exportfunctionAuthProvider({ children }) {
+const [token, setToken] = useState(null);
+const [user, setUser] = useState(null);
+
+
+useEffect(() => {
+constsavedToken = sessionStorage.getItem("token");
+if (savedToken) setToken(savedToken);
+ }, []);
+
+
+useEffect(() => {
+if (token) {
+sessionStorage.setItem("token", token);
+   } else {
+sessionStorage.removeItem("token");
+   }
+ }, [token]);
+
+
+constvalue = useMemo(
+   () => ({ token, setToken, user, setUser }),
+   [token, user]
+ );
+
+
+return<AuthContext.Providervalue={value}>{children}</AuthContext.Provider>;
+}
+
+Lo que hace es que cuando se abre la app está null, y después cada vez que nos movamos consultara el session.storage Ya con esto tenemos que crear un archivo que nos proteja las rutas, si no hay token nos redireccionará al login. src/auth/ProtectedRoute.jsx
+import { Navigate, Outlet } from"react-router-dom";
+import { useAuth } from"./useAuth";
+
+
+exportdefaultfunctionProtectedRoute() {
+const { token } = useAuth();
+if (!token) return<Navigateto="/"replace/>;
+return<Outlet/>;
+}
+
+Si no hay token redirige a login, si no redirige a donde toca.
+Ahora en el main.jsx ponemos las rutas que queremos que estén protegidas:
+functionApp() {
+return (
+<Routes>
+<Routepath="/"element={<Login/>}/>
+
+
+{/* Rutas protegidas */}
+<Routeelement={<ProtectedRoute/>}>
+<Routepath="/home"element={<Home/>}/>
+</Route>
+</Routes>
+ );
+}
+Importante importar el ProtectedRoute en el main. Y podemos probarlo.
+
+Ahora puede pasar algo que no está bien en cuanto a funcionamiento, ahora una persona con token puede ver el login, y no deberia ser asi, tenemos que ponerle que si hay token le redireccione a home, para eso vamos al archivo del login y añadimos:
+
+const { token,setToken, setUser } = useAuth();
+
+y tras todos los const:
+if (token) return<Navigateto="/home"replace/>;
+
+y en el import con useNavigate añadimos Navigate
+Para poder consumir la api de manera más cómodo con sus endpoints podemos hacer un navbar pero eso ya sería un componente no una page por lo que tendríamos la carpeta components
+
+import { useNavigate } from"react-router-dom";
+import { api } from"../api/axios";
+import { useAuth } from"../auth/useAuth";
+
+
+exportdefaultfunctionNavbar() {
+const { setToken, setUser } = useAuth();
+constnavigate = useNavigate();
+
+
+asyncfunctionhandleLogout() {
+try {
+awaitapi.post("/logout");
+   } catch (e) {
+console.warn("Error en logout backend");
+   } finally {
+setToken(null);
+setUser(null);
+navigate("/", { replace:true });
+   }
+ }
+
+
+asyncfunctiongoToMyRecipes() {
+navigate("/my-Recipes");
+ }
+
+
+return (
+<nav
+style={{
+display:"flex",
+gap:12,
+padding:12,
+borderBottom:"1px solid #ddd",
+     }}
+>
+<buttononClick={() =>navigate("/home")}>Home</button>
+<buttononClick={goToMyRecipes}>Mis Recetas</button>
+<buttononClick={handleLogout}>Logout</button>
+</nav>
+ );
+}
+
+
+
+Ahora para que se vean solo en las rutas protegidas podemos hacer un layout con ellas únicamente, dentro del carpeta layouts:
+Y creamos un archivo ProtectedLayout.jsx:
+
+importNavbarfrom"../components/Navbar";
+import { Outlet } from"react-router-dom";
+
+
+exportdefaultfunctionProtectedLayout() {
+return (
+<>
+<Navbar/>
+<Outlet/>
+</>
+ );
+}
+
+Y ahora nos vamos al main y cambiamos nuestro Routes por esto:
+<Routes>
+{/* Publica */}
+<Routepath="/"element={<Login/>}/>
+
+{/* Protegidas */}
+<Routeelement={<ProtectedRoute/>}>
+<Routeelement={<ProtectedLayout/>}>
+<Routepath="/home"element={<Home/>}/>
+<Routepath="/my-recipes"element={<MyRecipes/>}/>
+</Route>
+</Route>
+</Routes>
+
+
+Y tenemos que importar el ProtectedLayout.
+La lógica de esto es , el protected route protege las rutas , el protectedlayout pinta el navbar. Ahora tenemos que hacer la página myRecipes
+import { useEffect, useState } from"react";
+import { api } from"../api/axios";
+import"./MyRecipes.css";
+
+exportdefaultfunctionMyRecipes() {
+const [recipes, setRecipes] = useState([]);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState("");
+
+useEffect(() => {
+asyncfunctionloadRecipes() {
+try {
+setLoading(true);
+setError("");
+
+constres = awaitapi.get("/my-recipes");
+
+// Si tu API es paginada (Laravel Resource/Pagination)
+constdata = res.data?.data ?? res.data;
+
+setRecipes(data);
+      } catch (err) {
+console.error(err);
+setError("No se pudieron cargar tus recetas.");
+      } finally {
+setLoading(false);
+      }
+    }
+
+loadRecipes();
+  }, []);
+
+return (
+<divclassName="my-recipes">
+<h1className="my-recipes__title">Mis recetas</h1>
+
+{loading && <pclassName="my-recipes__info">Cargando...</p>}
+
+{!loading && error && <pclassName="my-recipes__error">{error}</p>}
+
+{!loading && !error && recipes.length === 0 && (
+<pclassName="my-recipes__info">No tienes recetas todavía.</p>
+      )}
+
+<ulclassName="my-recipes__list">
+{recipes.map((recipe) => (
+<liclassName="my-recipes__item"key={recipe.id}>
+<divclassName="my-recipes__card">
+{recipe.foto && (
+<img
+className="my-recipes__img"
+src={recipe.foto}
+alt={recipe.titulo ?? "Receta"}
+loading="lazy"
+/>
+              )}
+
+<divclassName="my-recipes__content">
+<h2className="my-recipes__recipe-title">
+{recipe.titulo ?? "Sin título"}
+</h2>
+
+{recipe.pasos && (
+<pclassName="my-recipes__steps">
+{String(recipe.pasos).slice(0, 140)}
+{String(recipe.pasos).length > 140 ? "..." : ""}
+</p>
+                )}
+</div>
+</div>
+</li>
+        ))}
+</ul>
+</div>
+  );
+}
+
+
+Tal y como está nos va a dar error de autorizacion porque no estamos mandando el bearer token, tenemos que ir al archivo axios dentro de api :
+
+
+Le programamos un interceptor , que si hay token nos lo añade a la autorización, en axios.js:
+importaxiosfrom"axios";
+
+
+exportconstapi = axios.create({
+baseURL:"http://localhost:8000/api",
+headers: {
+Accept:"application/json",
+"Content-Type":"application/json",
+ },
+});
+api.interceptors.request.use((config) => {
+consttoken = sessionStorage.getItem("token");
+
+
+if (token) {
+config.headers.Authorization = `Bearer ${token}`;
+ }
+
+
+returnconfig;
+});
+
+Por último queremos que el home sea la vista de todos las recetas:
+import { useEffect, useState } from"react";
+import { api } from"../api/axios";
+
+exportdefaultfunctionHome() {
+const [recipes, setRecipes] = useState([]);
+
+useEffect(() => {
+asyncfunctionload() {
+constres = awaitapi.get("/recipes");
+
+// Si /recipes viene paginado (Laravel):
+setRecipes(res.data.data);
+
+// Si alguna vez viniera sin paginar, podrías usar:
+// const payload = res.data;
+// setRecipes(Array.isArray(payload) ? payload : payload.data ?? []);
+    }
+
+load();
+  }, []);
+
+return (
+<divstyle={{ padding:24 }}>
+<h1>Todas las recetas</h1>
+
+{recipes.length === 0 && <p>No hay recetas todavía</p>}
+
+<ul>
+{recipes.map((recipe) => (
+<likey={recipe.id}style={{ marginBottom:16 }}>
+<strong>{recipe.titulo}</strong>
+
+{recipe.foto && (
+<divstyle={{ marginTop:8 }}>
+<img
+src={recipe.foto}
+alt={recipe.titulo}
+style={{ width:220, height:140, objectFit:"cover", borderRadius:8 }}
+/>
+</div>
+            )}
+
+<divstyle={{ marginTop:8, whiteSpace:"pre-line" }}>
+{recipe.pasos}
+</div>
+</li>
+        ))}
+</ul>
+</div>
+  );
+}
+
+
+Vamos a hacer los siders:
+
+esto crea esto:
+
+Y le metemos esto:
+<?php
+
+namespaceDatabase\Factories;
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+classRecipeFactoryextendsFactory
+{
+publicfunctiondefinition(): array
+    {
+return [
+'titulo' => $this->faker->sentence(3),
+'foto' => 'recipes/default.jpg',
+'pasos' => $this->faker->paragraphs(3, true),
+        ];
+    }
+}
+
+
+
+Y en este archivo metemos esto:
+<?php
+
+namespaceDatabase\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\User;
+use App\Models\Recipe;
+use Illuminate\Support\Facades\Hash;
+
+classUserRecipeSeederextendsSeeder
+{
+publicfunctionrun(): void
+    {
+// Usuario Nuria
+$nuria = User::firstOrCreate(
+            ['email' => 'nuria@test.com'],
+            [
+'name' => 'nuria',
+'password' => Hash::make('password'),
+            ]
+        );
+
+Recipe::factory()
+            ->count(5)
+            ->for($nuria)
+            ->create();
+
+// Usuario Pablo
+$pablo = User::firstOrCreate(
+            ['email' => 'pablo@test.com'],
+            [
+'name' => 'pablo',
+'password' => Hash::make('password'),
+            ]
+        );
+
+Recipe::factory()
+            ->count(5)
+            ->for($pablo)
+            ->create();
+    }
+}
+
+
+Y en el database seeder metemos esto:
+<?php
+
+namespaceDatabase\Seeders;
+
+use Illuminate\Database\Seeder;
+
+classDatabaseSeederextendsSeeder
+{
+publicfunctionrun(): void
+    {
+/        $this->call([
+UserRecipeSeeder::class,
+        ]);
+    }
+}
+
+
+
+
+
+09/02/2026 19:38-
+Instalación de Tailwind 
+
+Desde la consola, nos vamos a la carpeta de trabajo que tengamos el proyecto y ejecutamos:
+
+npm install -D tailwindcss postcss autoprefixer
+Comandonpm install -D tailwindcss postcss autoprefixer
+Sintaxis y significado
+npm: gestor de paquetes de Node.
+install: instala dependencias en el proyecto actual.
+-D (o --save-dev): guarda los paquetes en devDependencies, es decir, solo se usan en desarrollo/build, no en producción.
+tailwindcss: framework de utilidades CSS.
+postcss: herramienta que procesa CSS con plugins (Tailwind usa PostCSS).
+autoprefixer: plugin de PostCSS que añade prefijos CSS para compatibilidad con navegadores.
+Por qué lo usamos
+Tailwind necesita postcss y autoprefixer para generar el CSS final.
+Son herramientas de build, por eso se guardan en devDependencies (-D).
+
+
+
+Al ejecutar npm install -D tailwindcss postcss autoprefixer se instalaron los paquetes correctamente, pero npm mostró un aviso de “1 high severity vulnerability” y sugirió ejecutar npm audit fix para corregirlo; al revisar el detalle vimos que el problema era de axios, así que lo actualizamos y luego npm audit ya no mostró vulnerabilidades.
+
+
+
+Y comprobamos
+
+
+
+Mientras, he tenido problemas con codex, he seguido con las actualizaciones del antigravity.
+
+Para empezar, vamos a crear una rama en git, de la main por si acaso para trabajar sin miedo a romper el código. Para ello primero, guardamos los cambios que tuvieramos y luego ejecutamos en consola lo siguiente:
+git checkout -b Security
+Esto sirve para crear una nueva rama:
+
+Luego nos movemos a dicha rama con : 
+git branch
+
+
+
+Tras esto le pregunte por el punto de la primera fase: “Rate Limiting: Configurar Throttle en ruta de login para evitar fuerza bruta (A07).”
+
+Mi prompt fue: en la fase uno, hablame del rate limiting, configurar throttle y dime como hacerlo paso a paso
+
+Esto me genero el siguiente archivo : Implementation Plan
+
+
+Le pedí que me explicara paso a paso .
+
+Queremos limitar el número de peticiones que un usuario puede hacer a la API en un minuto (por defecto, 60 peticiones). Si superan este límite, recibirán un error 429 Too Many Requests.
+
+El archivo clave es 
+app/Providers/AppServiceProvider.php
+
+ Aquí es donde definimos las reglas del limitador.
+
+
+Lo abrimos
+Importamos las clases necesarias al principio del archivo:
+
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+
+En el método boot(), agregamos la definición del limitador llamado api
+RateLimiter::for('api', function (Request $request) {
+    return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+});
+
+Limit::perMinute(60): Permite 60 peticiones por minuto.
+by(...): Aplica el límite por usuario autenticado (ID) o por dirección IP si no está autenticado.
+
+
+En Laravel 11, las rutas definidas en 
+routes/api.php ya tienen asignado automáticamente el grupo de middleware api. Este grupo incluye por defecto el middleware throttle:api.
+Como hemos definido un limitador llamado api en 
+AppServiceProvider, Laravel usará nuestra configuración (60 peticiones/minuto) para todas las rutas en 
+routes/api.php.
+No es necesario editar 
+routes/api.php a menos que quieras límites específicos para ciertas rutas.
+
+
+
+
+
+10/02/26
+
+Vamos a terminar de completar la gestión de usuarios.
+Como sigo viendo por otro lado lo del security he vuelto a crear una ramadesde security para asegurarme de trabajar desde los cambios.
+
+
+Como bearer no nos funciona, decidimos crear desde Controllers/Api un controlador para el registro.En este archivo he creado un controlador para gestionar el registro de usuarios desde la API. Lo primero que se hace es definir el namespace App\Http\Controllers\Api, que sirve para indicar que este controlador pertenece a la parte de la API y para que Laravel pueda localizar correctamente la clase dentro de la estructura del proyecto.
+
+Después se importan todas las clases que se van a necesitar. Se usa Controller como clase base de la que va a heredar el controlador. También se importa el modelo User, ya que es el que representa a los usuarios en la base de datos y se utiliza para crear nuevos registros. Se incluye el evento Registered para lanzar el evento de registro de Laravel cuando se crea un usuario. Además, se importa Request para poder acceder a los datos enviados en la petición, Hash para encriptar la contraseña antes de guardarla y Rules para aplicar las reglas de validación de contraseñas por defecto de Laravel.
+
+A continuación se define la clase RegisteredUserController, que extiende de Controller. Esta clase se encarga exclusivamente de manejar el proceso de registro de usuarios mediante la API.
+
+Dentro de la clase se crea el método store, que recibe un objeto Request. Este método se ejecuta cuando se hace una petición de tipo POST para registrar un nuevo usuario. Lo primero que se hace dentro del método es validar los datos recibidos. Se comprueba que el nombre sea obligatorio, de tipo texto y con un máximo de 255 caracteres. El email también es obligatorio, debe estar en formato válido, en minúsculas, no superar los 255 caracteres y no existir previamente en la tabla de usuarios. La contraseña es obligatoria, debe coincidir con su confirmación y cumplir las reglas de seguridad por defecto de Laravel. Por último, el campo device_name es opcional y solo se valida que sea una cadena de texto.
+
+Una vez que los datos pasan la validación, se crea el usuario en la base de datos utilizando el modelo User. Se guardan el nombre y el email directamente desde la petición y la contraseña se guarda encriptada usando Hash::make, para garantizar la seguridad y evitar almacenar contraseñas en texto plano.
+
+Después de crear el usuario, se lanza el evento Registered, lo que permite que Laravel ejecute acciones automáticas asociadas al registro, como el envío de correos de verificación si están configurados.
+
+A continuación se define el nombre del dispositivo desde el que se crea el token. Si el cliente ha enviado el campo device_name, se utiliza ese valor; si no, se asigna por defecto el valor api-client.
+
+Por último, se devuelve una respuesta en formato JSON con un código HTTP 201, indicando que el usuario se ha creado correctamente. En la respuesta se incluye un token de autenticación generado con Sanctum, que el usuario utilizará para autenticarse en futuras peticiones a la API, junto con los datos del usuario recién creado.
+
+Al finalizar terminamos con esto:<?php
+
+namespaceApp\Http\Controllers\Api;
+
+useApp\Http\Controllers\Controller;
+useApp\Models\User;
+useIlluminate\Auth\Events\Registered;
+useIlluminate\Http\Request;
+useIlluminate\Support\Facades\Hash;
+useIlluminate\Validation\Rules;
+
+classRegisteredUserControllerextendsController
+{
+/**
+     * Handle an incoming API registration request.
+     *
+     * @throws\Illuminate\Validation\ValidationException
+     */
+publicfunctionstore(Request $request)
+    {
+        $request->validate([
+'name'=> ['required', 'string', 'max:255'],
+'email'=> ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+'password'=> ['required', 'confirmed', Rules\Password::defaults()],
+'device_name'=> ['nullable', 'string'],
+        ]);
+
+        $user =User::create([
+'name'=> $request->name,
+'email'=> $request->email,
+'password'=>Hash::make($request->string('password')),
+        ]);
+
+event(newRegistered($user));
+
+        $deviceName = $request->device_name ??'api-client';
+
+returnresponse()->json([
+'token'=> $user->createToken($deviceName)->plainTextToken,
+'user'=> $user,
+        ], 201);
+    }
+}
+
+
+Antes de seguir vamos a crear tabla de auditoria de accesos , para ello vamos a crear la migración con : 
+php artisan make:migration create_user_access_logs_table
+
+
+Esto crea el siguiente archivo 
+
+
+Ahora hay que editar esa migración para añadir los campos de auditoría.
+La tabla debe incluir:
+user_id (nullable, FK a users)
+action (string, ej: login, logout, register)
+success (boolean)
+ip (string, 45 para IPv6)
+user_agent (string, 512)
+timestamps
+
+Por eso vamos a sustituir el bloque Schema: : create por esto:
+Ahora ejecutamos la migración con : php artisan migrate
+
+
+Esto creó la tabla user_access_logs.
+
+Ahora crearemos el modelo UserAccesssLog .
+
+Necesitamos ejecutar primero php artisan make:model UserAccessLog
+
+
+
+
+Esto nos debe crear el archivo UserAccessLog.php
+
+ Una vez creado el modelo, se modificó su contenido para adaptarlo a las necesidades del proyecto. La clase UserAccessLog extiende de Model, lo que le da acceso a todas las funcionalidades de Eloquent. También se utiliza el trait HasFactory, que permite crear registros de prueba mediante factories si fuese necesario más adelante.
+
+Se añadió la propiedad $fillable para definir qué campos pueden ser asignados de forma masiva. Esto es importante porque Laravel, por seguridad, no permite guardar datos en masa si no se especifica explícitamente qué campos están permitidos. En este caso se han incluido los campos user_id, action, success, ip y user_agent, que son los datos que se quieren guardar cada vez que se registre una acción o acceso de un usuario.
+
+Además, se añadió el método user(), que define una relación de tipo belongsTo con el modelo User. Esto indica que cada registro de acceso pertenece a un único usuario, identificado por el campo user_id. Gracias a esta relación, se puede acceder fácilmente al usuario asociado a un registro de acceso usando Eloquent, lo que facilita consultas y el manejo de los datos.
+
+Este modelo se ha configurado así para poder registrar de forma estructurada la actividad de los usuarios y relacionarla directamente con la tabla de usuarios, manteniendo una base de datos más organizada y preparada para futuras funcionalidades relacionadas con seguridad o control de accesos.
+
+Tenemos que crear la relación en user, asi que nos vamos a User.php
+
+Al final añadimos la siguiente función:
+Este código define la relación entre el modelo User y los registros de acceso. El método public function accessLogs() crea un método público dentro del modelo User, que es la forma que utiliza Laravel para definir relaciones entre modelos y poder acceder a ellas de manera sencilla.
+Dentro del método se devuelve $this->hasMany(...), lo que indica que un usuario puede tener muchos registros de acceso asociados. Es decir, un mismo usuario puede generar múltiples entradas en la tabla de logs a lo largo del tiempo.
+El modelo relacionado es \App\Models\UserAccessLog::class. Al definir esta relación, Laravel asume automáticamente que la clave foránea utilizada en la tabla user_access_logs es user_id, que es justo el campo que se creó previamente en el modelo y en la base de datos.
+Gracias a esta relación, ahora es posible obtener todos los registros de acceso de un usuario utilizando $user->accessLogs. También permite crear nuevos registros de forma directa y vinculada al usuario mediante $user->accessLogs()->create([...]), lo que simplifica mucho el registro de la actividad del usuario en la aplicación.
+Ahora vamos a cambiar AuthTokenController para configurar los accesos sin revelar información sensible .
+
+En este archivo hacemos  los siguientes cambios:
+
+
+Cambios exactos:
+Se importa UserAccessLog.
+En login fallido: se crea log con success = false.
+En login exitoso: se crea log con success = true y se reutiliza $token.
+En logout: se crea log con action = 'logout'.
+Ahora toca registrar el acceso en el registro API (Api\RegisteredUserController)
+Por eso tenemos que importar UserAcessLog, y luego crear el usuario y token, guardando un log.
+
+El archivo quedaría así:
+<?php
+
+namespaceApp\Http\Controllers\Api;
+
+useApp\Http\Controllers\Controller;
+useApp\Models\User;
+useApp\Models\UserAccessLog;
+useIlluminate\Auth\Events\Registered;
+useIlluminate\Http\Request;
+useIlluminate\Support\Facades\Hash;
+useIlluminate\Validation\Rules;
+
+classRegisteredUserControllerextendsController
+{
+/**
+     * Handle an incoming API registration request.
+     *
+     * @throws\Illuminate\Validation\ValidationException
+     */
+publicfunctionstore(Request $request)
+    {
+        $request->validate([
+'name'=> ['required', 'string', 'max:255'],
+'email'=> ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+'password'=> ['required', 'confirmed', Rules\Password::defaults()],
+'device_name'=> ['nullable', 'string'],
+        ]);
+
+        $user =User::create([
+'name'=> $request->name,
+'email'=> $request->email,
+'password'=>Hash::make($request->string('password')),
+        ]);
+
+event(newRegistered($user));
+
+        $deviceName = $request->device_name ??'api-client';
+
+        $token = $user->createToken($deviceName)->plainTextToken;
+
+UserAccessLog::create([
+'user_id'=> $user->id,
+'action'=>'register',
+'success'=>true,
+'ip'=> $request->ip(),
+'user_agent'=> $request->userAgent(),
+        ]);
+
+returnresponse()->json([
+'token'=> $token,
+'user'=> $user,
+        ], 201);
+    }
+}
+
+
+
+16/02/26
+Nos dirigimos a routes/api.php e importamos RegisteredUserController para poder usarlo en una nueva ruta POST /api/register y registrar usuarios desde la API (sin pasar por el flujo web). 
+Para ello añadimos:
+use App\Http\Controllers\Api\RegisteredUserController;
+
+Ahora vamos a endurecer el login y añadir el register con throttle estricto para mitigar la fuerza bruta y abuso según OWASP A07.Para eso sustituimos la ruta actual de login y añadimos register así:
+Route::middleware(['throttle:5,1'])->post('/login', [AuthTokenController::class, 'login']);
+Route::middleware(['throttle:5,1'])->post('/register', [RegisteredUserController::class, 'store']);
+
+
+
+Por último vamos a verificar las rutas para confirmar que Laravel registró endpoints y middleware.
+Nos vamos a la terminal de laragon y ejecutamos 
+
+
+
+Vamos a probar que funciona en postman.
+
+Hicimos varias pruebas: registro, login, logout, me y el rate limit.
+Todas salieron correctamente y por último, hemos comprobado user_access_log
+
+
+18/02/26
+Hoy nos vamos a dedicar al frontend.
+
+(Tuvimos problemas con laragon, nos exigen api key hasta que descargamos la versión 6)
+
+21/02/26
+Hoy nos vamos a dedicar al back del crud de recetas(crear, editar y borrar). Pero tenemos un pequeño problema, hicimos una tabla de ejemplo y unos seeders que no están completos en referencia a lo que queremos.
+Importante que mergeamos la rama registro con la main y q borramos registro, con git branch -d y ahora vamos a crear otra rama desde la main.
+
+
+Volviendo al tema, ahora lo que tenemos es:
+
+recipes: titulo, foto?, pasos, user_id (FK a users)ingredients: nombre unique (tabla aislada)
+
+Pero nos falta:
+categories (y por tanto etiquetas)
+pivote receta–ingrediente (ingredient_recipe)
+pivote receta–categoría (category_recipe) → si “etiquetas = categorías”
+modelos Ingredient y Category + relaciones belongsToMany
+columna tiempo en recipes (y “etiquetas” no como string, sino como relación)
+
+Vale, lo primero que vamos a hacer es borrar los seeders que haya de recetas, pq puede que si agregamos nuevas columnas luego nos peten las antiguas.
+
+Ahora lo que tenemos es que en UserRecipeSeeder.php, creamos los usuarios (nnuria, pablo y  además creamos las recetas y en DatabaseSeeder llamaba a la clase de antes. El seeders de usuarios y el de de recetas están mezclados.
+
+Asique lo que vamos a hacer es separar usuarios en un seeders propio, UserSeeder.php:
+Prácticamente lo que hacemos es meter el código de usuarios en el nuevo, por lo tanto quedaría así:
+<?php
+
+namespaceDatabase\Seeders;
+
+useApp\Models\User;
+useIlluminate\Database\Seeder;
+useIlluminate\Support\Facades\Hash;
+
+classUserSeederextendsSeeder
+{
+publicfunctionrun():void
+    {
+User::firstOrCreate(
+            ['email'=>'nuria@test.com'],
+            [
+'name'=>'nuria',
+'password'=>Hash::make('password'),
+            ]
+        );
+
+User::firstOrCreate(
+            ['email'=>'pablo@test.com'],
+            [
+'name'=>'pablo',
+'password'=>Hash::make('password'),
+            ]
+        );
+    }
+}
+
+
+use App\Models\User;
+
+Te permite usar User::...
+Sin esto tendrías que escribir \App\Models\User::...
+use Illuminate\Database\Seeder;
+
+Tu clase UserSeeder extiende de Seeder
+Sin esto tendrías que poner class UserSeeder extends \Illuminate\Database\Seeder
+use Illuminate\Support\Facades\Hash;
+
+Te permite usar Hash::make('password') para guardar contraseña cifrada
+Sin esto tendrías que escribir Hash::make(...)
+
+Luego editamos DatabaseSeeder para que llame a este nuevo archivo y borramos UserRecipe…
+
+Ahora comprobamos que UserSeeder solo crea usuarios : 
+
+
+Este comando busca si en el archivo aparece algo de recetas, como sale vacío confirmamos por tanto, que ese seeder no está creando recetas.
+
+Perfecto, esa salida confirma 2 cosas:
+DatabaseSeeder está apuntando bien a UserSeeder.
+Se ejecutó solo UserSeeder (no aparece UserRecipeSeeder ni seed de recetas).
+
+Perfecto, interpretación directa de tus resultados:
+\App\Models\User::count(); → 2
+\App\Models\Recipe::count(); → 10
+Qué significa:
+El seeder de usuarios funciona: hay 2 usuarios.
+Esas 10 recetas no se han creado en esta última ejecución de UserSeeder; ya estaban de antes (cuando existía UserRecipeSeeder o por cargas previas).
+Como queremos dejarlo limpio:
+
+y repetimos las consultas en tinker:
+
+
+Ahora vamos a generar una nueva migración de laravel para la tabla categories. 
+
+Primero creamos el archivo en  database/migrations:
+
+phpEjecuta el intérprete de PHP en tu máquina.
+artisanEs la consola de comandos de Laravel (CLI del proyecto).
+make:migrationLe dice a Laravel: “crea un nuevo archivo de migración”.
+create_categories_tableEs el nombre de la migración.Convención Laravel: cuando empieza por create_..._table, Laravel entiende que crearás una tabla nueva.
+--create=categoriesFlag que indica explícitamente que esta migración es para crear la tabla categories.Además, Laravel te genera el esqueleto del método up() con Schema::create('categories', ...).
+
+Ahora vamos a definir la estructura inicial de la tabla categories en la migración.
+Para ello, vamos al archivo nuevo que se creó en migraciones 2026_02_21_130925_create_categories_table.php
+
+Y cambiamos el esqueleto por defecto de laravel, en concreto el esquema de la tabla  por lo siguiente:
+Schema::create('categories', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique();
+            $table->timestamps();
+        });
+
+
+
+Por si acaso vamos a comprobar la sintaxis:
+
+
+Ahora vamos a Aplicar la migración para crear físicamente la tabla categorías en la base de datos.
+
+
+comprobamos que se aplicó correctamente
+
+En la última línea podemos ver que la migración está en funcionamiento.
+
+Ahora creamos el modelo que representa la tabla para poder trabajarla desde código. Es decir, esto crea Category.php
+
+
+
+
+Ahora vamos a editar el modelo para preparar lo para  guardar categorías de forma segura.
+Para permitir asignación masiva de name con $fillable.
+
+Esto sirve para que luego podamos usar Category::create([...]) sin error de mass assignment.
+
+y solo necesitamos añadir esta línea dentro de la clase:protected $fillable = ['name'];
+
+ Luego comprobamos errores de sintaxis:
+
+
+
+El siguiente paso es definir en la nueva migración la columna category_id y su clave foránea en ingredients.
+
+Editaré la migración 2026_02_21_184918_add_category_id_to_ingredients_table.php para que category_id sea requerido y con FK a categories.
+Para ello uso este bloque exacto dentro de up():
+Schema::table('ingredients', function (Blueprint $table) {
+        $table->foreignId('category_id')
+->constrained('categories')
+->restrictOnDelete();
+        });
+
+Y down esto:
+Schema::table('ingredients', function (Blueprint $table) {
+            $table->dropForeign(['category_id']);
+            $table->dropColumn('category_id');
+        });
+Guardamos y comprobamos.
+
+
+Aplico la migración add_category_id_to_ingredients_table para crear la columna obligatoria y su FK en ingredients.
+
+Voy a comprobar estado de migraciones para confirmar que add_category_id_to_ingredients_table está en Ran.
+
+Voy a confirmar que el estado es correcto: la migración 2026_02_21_184918_add_category_id_to_ingredients_table está en batch [3] y Ran, así que el cambio quedó aplicado en BD.
+
+
+Voy a editar 2026_02_21_190855_add_time_to_recipes_table.php para añadir una columna 
+entera sin signo (unsignedInteger) llamada time, que representará minutos de preparación.
+Impacto: en este paso solo cambia el archivo de migración, todavía no cambia la BD.
+
+Para ello agregamos en up(): 
+Schema::table('recipes', function (Blueprint $table) {
+        $table->unsignedInteger('time');
+        });
+
+
+Luego agregamos en down(), dentro del esquema: 
+            $table->dropColumn('time');
+
+
+Tengo que aplicar la migración
+
+
+Toca generar la migración de la tabla intermedia que conectará recetas e ingredientes en relación muchos-a-muchos.
+En este paso solo creo el archivo; todavía no edito columnas ni ejecuto migraciones.
+
+
+Ahora la edito para crear:
+recipe_id FK a recipes
+ingredient_id FK a ingredients
+clave única compuesta para evitar duplicados (recipe_id, ingredient_id)
+sin id propio y sin timestamps (pivot clásica)
+<?php
+
+useIlluminate\Database\Migrations\Migration;
+useIlluminate\Database\Schema\Blueprint;
+useIlluminate\Support\Facades\Schema;
+
+returnnewclassextendsMigration
+{
+publicfunctionup():void
+    {
+Schema::create('ingredient_recipe', function (Blueprint $table) {
+            $table->foreignId('recipe_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('ingredient_id')->constrained()->cascadeOnDelete();
+
+            $table->unique(['recipe_id', 'ingredient_id']);
+        });
+    }
+
+publicfunctiondown():void
+    {
+Schema::dropIfExists('ingredient_recipe');
+    }
+};
+
+
+
+Voy a ejecutar migraciones pendientes para crear físicamente la tabla pivote en BD. Esto crea ingredient_recipe con sus dos FKs y restricción de unicidad.
+
+
+Ahora creamos el archivo de la migración de la tabla pivote category_recipe:
+
+
+Voy a editar 2026_02_21_192902_create_category_recipe_table.php para crear:
+
+recipe_id FK a recipes
+category_id FK a categories
+unique(recipe_id, category_id) para evitar duplicados
+sin id y sin timestamps (pivot clásica)
+<?php
+
+useIlluminate\Database\Migrations\Migration;
+useIlluminate\Database\Schema\Blueprint;
+useIlluminate\Support\Facades\Schema;
+
+returnnewclassextendsMigration
+{
+publicfunctionup():void
+    {
+Schema::create('category_recipe', function (Blueprint $table) {
+            $table->foreignId('recipe_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
+
+            $table->unique(['recipe_id', 'category_id']);
+        });
+    }
+
+publicfunctiondown():void
+    {
+Schema::dropIfExists('category_recipe');
+    }
+};
+
+
+
+
+y la comprobación de después
+Ahora voy a crear Ingredient.php
+
+
+Voy a preparar Ingredient.php con:
+
+$fillable para creación/edición,
+belongsTo(Category::class) por category_id,
+belongsToMany(Recipe::class) por pivote ingredient_recipe.
+<?php
+
+namespaceApp\Models;
+
+useIlluminate\Database\Eloquent\Model;
+useIlluminate\Database\Eloquent\Relations\BelongsTo;
+useIlluminate\Database\Eloquent\Relations\BelongsToMany;
+
+classIngredientextendsModel
+{
+protected $fillable = [
+'name',
+'category_id',
+    ];
+
+publicfunctioncategory():BelongsTo
+    {
+return$this->belongsTo(Category::class);
+    }
+
+publicfunctionrecipes():BelongsToMany
+    {
+return$this->belongsToMany(Recipe::class);
+    }
+}
+
+
+
+belongsTo y belongsToMany definen relaciones Eloquent entre modelos.
+category() con belongsTo(Category::class)Significa: cada Ingredient pertenece a una categoría.Usa la FK category_id en ingredients.
+recipes() con belongsToMany(Recipe::class)Significa: un Ingredient puede estar en muchas recetas y una receta puede tener muchos ingredientes.Usa la pivote ingredient_recipe.
+Para qué sirven en práctica:
+Leer relaciones fácil: $ingredient->category, $ingredient->recipes
+Guardar relaciones: $recipe->ingredients()->attach($ingredientId)
+Consultas limpias: Ingredient::with('category', 'recipes')->get()
+Y se comprueba sintaxis.
+
+Ahora actualizamos el model Recipe para reflejar el nuevo modelo ( time, ingredientes y categorías.
+
+Antes teniamos esto( ahora jsjsj):
+
+Y ahora:
+<?php
+
+namespaceApp\Models;
+
+useIlluminate\Database\Eloquent\Model;
+useIlluminate\Database\Eloquent\Relations\BelongsToMany;
+
+classRecipeextendsModel
+{
+protected $fillable = [
+'user_id',
+'name',
+'time',
+'instructions',
+    ];
+
+publicfunctioningredients():BelongsToMany
+    {
+return$this->belongsToMany(Ingredient::class);
+    }
+
+publicfunctioncategories():BelongsToMany
+    {
+return$this->belongsToMany(Category::class);
+    }
+}
+
+
+Voy a ejecutar una prueba mínima en Tinker para cargar el nombre de la relación desde el modelo.
+
+Ese resultado confirma que Recipe->ingredients() resuelve a App\Models\Ingredient correctamente.
+Voy a actualizar Category.php para reflejar:
+relación 1:N con ingredientes (hasMany)
+relación N:M con recetas (belongsToMany)
+Para ello añadimos estas funciones al final de la clase:
+publicfunctioningredients():HasMany
+    {
+return$this->hasMany(Ingredient::class);
+    }
+
+publicfunctionrecipes():BelongsToMany
+    {
+return$this->belongsToMany(Recipe::class);
+    }
+
+y añadimos tras el primer use:
+useIlluminate\Database\Eloquent\Relations\BelongsToMany;
+useIlluminate\Database\Eloquent\Relations\HasMany;
+
+
+
+Relaciones funcionales:
+Category->recipes() resuelve a App\Models\Recipe
+Category->ingredients() resuelve a App\Models\Ingredient
+Vale, lo que serían las tablas están, ahora hay que conectar a los controladores
+
+
+Iniciar la capa de seguridad del CRUD creando la RecipePolicy para controlar acceso por propietario (OWASP A01), después de revisar Antigravity.
+
+Según el archivo que generamos en antigravity, de seguridad ,voy a aplicar su línea base para este CRUD:
+Iniciar A03 correctamente creando el primer FormRequest (StoreRecipeRequest) para sacar validación del controller.
+Ahora voy a crear solo StoreRecipeRequest:
+
+Ese comando crea una clase FormRequest en StoreRecipeRequest.php.
+Sirve para centralizar y endurecer validación/autorización de entrada del endpoint store (A03 Injection), en vez de validar “a mano” dentro del controller.
+Ventaja: reglas reutilizables, código más limpio y respuesta 422 automática cuando algo no cumple.
+
+
+Voy a generar UpdateRecipeRequest para separar reglas de store y update (A03).
+Luego en próximos pasos pondremos reglas concretas y conectaremos ambos requests al controller.
+
+
+Voy a editar StoreRecipeRequest.php con reglas para:
+
+receta (name, instructions, time, photo opcional),
+category_ids como array de IDs existentes,
+ingredients como array de objetos con id existente y amount/unit opcionales controlados.
+
+<?php
+
+namespaceApp\Http\Requests;
+
+useIlluminate\Foundation\Http\FormRequest;
+
+classStoreRecipeRequestextendsFormRequest
+{
+publicfunctionauthorize():bool
+    {
+returntrue;
+    }
+
+publicfunctionrules():array
+    {
+return [
+'name'=> ['required', 'string', 'max:150'],
+'instructions'=> ['required', 'string', 'max:10000'],
+'time'=> ['required', 'integer', 'min:1', 'max:1440'],
+'photo'=> ['nullable', 'url', 'max:2048'],
+
+'category_ids'=> ['sometimes', 'array', 'max:20'],
+'category_ids.*'=> ['integer', 'distinct', 'exists:categories,id'],
+
+'ingredients'=> ['sometimes', 'array', 'max:100'],
+'ingredients.*.id'=> ['required', 'integer', 'distinct', 'exists:ingredients,id'],
+'ingredients.*.amount'=> ['nullable', 'numeric', 'gt:0', 'max:99999.99'],
+'ingredients.*.unit'=> ['nullable', 'string', 'max:30'],
+        ];
+    }
+}
+
+
+y hacemos la comprobación de php.
+
+A editar UpdateRecipeRequest.php con reglas equivalentes a store, pero usando sometimes para permitir updates parciales.
+
+<?php
+
+namespaceApp\Http\Requests;
+
+useIlluminate\Foundation\Http\FormRequest;
+
+classUpdateRecipeRequestextendsFormRequest
+{
+publicfunctionauthorize():bool
+    {
+returntrue;
+    }
+
+publicfunctionrules():array
+    {
+return [
+'name'=> ['sometimes', 'required', 'string', 'max:150'],
+'instructions'=> ['sometimes', 'required', 'string', 'max:10000'],
+'time'=> ['sometimes', 'required', 'integer', 'min:1', 'max:1440'],
+'photo'=> ['sometimes', 'nullable', 'url', 'max:2048'],
+
+'category_ids'=> ['sometimes', 'array', 'max:20'],
+'category_ids.*'=> ['integer', 'distinct', 'exists:categories,id'],
+
+'ingredients'=> ['sometimes', 'array', 'max:100'],
+'ingredients.*.id'=> ['required', 'integer', 'distinct', 'exists:ingredients,id'],
+'ingredients.*.amount'=> ['nullable', 'numeric', 'gt:0', 'max:99999.99'],
+'ingredients.*.unit'=> ['nullable', 'string', 'max:30'],
+        ];
+    }
+}
+
+
+Cerrar el hueco crítico de A01: impedir que user_id llegue por mass assignment en Recipe.
+Voy a editar Recipe.php para quitar user_id de $fillable.
+Patrón seguro: user_id se asigna solo en backend con auth()->id() (nunca desde body).
+Bloque exacto de $fillable que debe quedar en Recipe.php:
+protected $fillable = [
+'name',
+'time',
+'instructions',
+'photo',
+];
+
+Voy a crear el request que Orion detecta por nombre (App\Http\Requests\RecipeRequest).
+
+Voy a editar RecipeRequest.php para definir storeRules() y updateRules() (formato Orion), incluyendo:
+campos de receta,
+category_ids válidos,
+ingredients estructurado y validado.
+<?php
+
+namespaceApp\Http\Requests;
+
+useOrion\Http\Requests\Request;
+
+classRecipeRequestextendsRequest
+{
+publicfunctionstoreRules():array
+    {
+return [
+'name'=> ['required', 'string', 'max:150'],
+'instructions'=> ['required', 'string', 'max:10000'],
+'time'=> ['required', 'integer', 'min:1', 'max:1440'],
+'photo'=> ['nullable', 'url', 'max:2048'],
+
+'category_ids'=> ['sometimes', 'array', 'max:20'],
+'category_ids.*'=> ['integer', 'distinct', 'exists:categories,id'],
+
+'ingredients'=> ['sometimes', 'array', 'max:100'],
+'ingredients.*.id'=> ['required', 'integer', 'distinct', 'exists:ingredients,id'],
+'ingredients.*.amount'=> ['nullable', 'numeric', 'gt:0', 'max:99999.99'],
+'ingredients.*.unit'=> ['nullable', 'string', 'max:30'],
+        ];
+    }
+
+publicfunctionupdateRules():array
+    {
+return [
+'name'=> ['sometimes', 'required', 'string', 'max:150'],
+'instructions'=> ['sometimes', 'required', 'string', 'max:10000'],
+'time'=> ['sometimes', 'required', 'integer', 'min:1', 'max:1440'],
+'photo'=> ['sometimes', 'nullable', 'url', 'max:2048'],
+
+'category_ids'=> ['sometimes', 'array', 'max:20'],
+'category_ids.*'=> ['integer', 'distinct', 'exists:categories,id'],
+
+'ingredients'=> ['sometimes', 'array', 'max:100'],
+'ingredients.*.id'=> ['required', 'integer', 'distinct', 'exists:ingredients,id'],
+'ingredients.*.amount'=> ['nullable', 'numeric', 'gt:0', 'max:99999.99'],
+'ingredients.*.unit'=> ['nullable', 'string', 'max:30'],
+        ];
+    }
+}
+
+
+Voy a tocar api.php para que el recurso recipes no exponga batchStore, batchUpdate, batchDestroy mientras aún no las necesitamos.
+Esto evita endpoints masivos innecesarios y simplifica control de autorización/validación (A01/A03).
+
+Cambiamos esta línea : 
+Orion::resource('recipes', RecipeController::class);
+
+por esta:
+Orion::resource('recipes', RecipeController::class)->withoutBatch();
+
+Voy a limpiar el controller para dejar solo lo necesario y correcto:
+quitar validationRules() legacy (Orion no lo usa aquí),
+tipar beforeStore/beforeSave con Orion\Http\Requests\Request y Illuminate\Database\Eloquent\Model,
+forzar user_id desde usuario autenticado en ambos hooks (store/update).
+<?php
+
+namespaceApp\Http\Controllers\Api;
+
+useApp\Models\Recipe;
+useIlluminate\Database\Eloquent\Model;
+useOrion\Http\Controllers\Controller;
+useOrion\Http\Requests\Request;
+
+classRecipeControllerextendsController
+{
+protected $model =Recipe::class;
+
+protectedfunctionbeforeStore(Request $request, Model $entity)
+    {
+        $entity->user_id = $request->user()->id;
+    }
+
+protectedfunctionbeforeSave(Request $request, Model $entity)
+    {
+if (!$entity->exists) {
+            $entity->user_id = $request->user()->id;
+        }
+    }
+}
+
+Ya comprobé internamente que RecipeController compila y las rutas siguen bien.
+Ahora voy a editar RecipeController.php para declarar la policy explícita.
+
+Añado este use:
+useApp\Policies\RecipePolicy;
+
+y dentro de la clase añade esta propiedad:
+protected $policy =RecipePolicy::class;
+
+Voy a endurecer RecipePolicy para que view también sea owner-only (igual que update/delete).
+Ahora mismo view devuelve true, eso permite acceso por ID a recetas ajenas.
+En RecipePolicy.php, cambia solo este método a:
+
+publicfunctionview(User $user, Recipe $recipe):bool
+    {
+return $recipe->user_id === $user->id;
+    }
+
+Voy a limitar la query base en RecipeController al usuario autenticado.
+Así, aunque viewAny sea true, el index solo listará recetas propias.
+
+Añade este método dentro de RecipeController.php:
+protectedfunctionbuildIndexFetchQuery(Request $request, array $requestedRelations):\Illuminate\Database\Eloquent\Builder
+    {
+returnparent::buildIndexFetchQuery($request, $requestedRelations)
+->where('user_id', $request->user()->id);
+    }
+
+Cambio exacto en orion.php:
+'use_validated'=>true,
+
+Comprobaciones internas finalizadas y correctas. Estado actual:
+A01:
+RecipePolicy owner-only en view/update/delete.
+RecipeController enlazado explícitamente con RecipePolicy.
+RecipeController fuerza user_id desde usuario autenticado en hooks (beforeStore/beforeSave).
+Recipe::$fillable ya no incluye user_id.
+index filtrado por user_id autenticado.
+A03:
+RecipeRequest implementado con storeRules() y updateRules() para campos de receta, category_ids e ingredients.
+orion.use_validated activado en true.
+Endpoints batch desactivados (withoutBatch) para reducir superficie.
+A07 (según Antigravity):
+Ya existe throttle en login/register; bloque de endurecimiento Auth (password policy, mensajes genéricos) queda para siguiente fase dedicada.
+Logging básico:
+Aún pendiente de añadir en acciones sensibles (store/update/delete), recomendado como siguiente paso.
+
+Objetivo:Implementar la sincronización de categorías en store y update desde RecipeController, usando datos validados por RecipeRequest.
+
+Voy a tocar RecipeController.php porque ahí Orion ejecuta hooks comunes de guardado.
+En este paso voy a añadir afterSave(...) para que, cuando llegue category_ids, se haga sync sobre la relación categories() tanto al crear como al actualizar.
+Efecto secundario importante: si category_ids llega como [], se desasocian todas las categorías (comportamiento esperado de sync).
+
+protectedfunctionafterSave(Request $request, Model $entity)
+    {
+        $validated = $request->validated();
+
+if (array_key_exists('category_ids',$validated)) {
+            $entity->categories()->sync($validated['category_ids']);
+        }
+    }
+
+
+Empezar a implementar sincronización de ingredientes en store/update (pivot ingredient_recipe) dentro de afterSave(), usando los datos validados de ingredients en RecipeRequest.
+Voy a editar RecipeController.php, dentro de afterSave(...), para que si llega ingredients en el payload validado:
+construya el array de sync con ingredient_id => pivotData,
+sincronice la relación ingredients() en una sola operación.
+Añade este bloque dentro de afterSave(...), después del bloque de category_ids:
+if (array_key_exists('ingredients',$validated)) {
+            $ingredientsSyncData = [];
+
+foreach ($validated['ingredients'] as $ingredient) {
+                $pivotData = [];
+
+if (array_key_exists('amount',$ingredient)) {
+                    $pivotData['amount'] = $ingredient['amount'];
+                }
+
+if (array_key_exists('unit',$ingredient)) {
+                    $pivotData['unit'] = $ingredient['unit'];
+                }
+
+                $ingredientsSyncData[$ingredient['id']] = $pivotData;
+            }
+
+            $entity->ingredients()->sync($ingredientsSyncData);
+            }
+
+        }
+
+Prueba ejecutada internamente: la migración 2026_02_21_191907_create_ingredient_recipe_table.php no tiene columnas amount ni unit; solo recipe_id y ingredient_id.
+Conclusión: si dejamos el sync con pivotData (amount/unit), fallará en runtime con error SQL.
+Voy a editar RecipeController.php para que en afterSave(...) haga sync por IDs, sin amount/unit.
+Esto deja store/update funcionales con la migración actual y evita errores SQL.
+
+<?php
+
+namespaceApp\Http\Controllers\Api;
+
+useApp\Models\Recipe;
+useIlluminate\Database\Eloquent\Model;
+useOrion\Http\Controllers\Controller;
+useOrion\Http\Requests\Request;
+useApp\Policies\RecipePolicy;
+
+classRecipeControllerextendsController
+{
+protected $model =Recipe::class;
+protected $policy =RecipePolicy::class;
+
+protectedfunctionbeforeStore(Request $request, Model $entity)
+    {
+        $entity->user_id = $request->user()->id;
+    }
+
+protectedfunctionbeforeSave(Request $request, Model $entity)
+    {
+if (!$entity->exists) {
+            $entity->user_id = $request->user()->id;
+        }
+    }
+protectedfunctionbuildIndexFetchQuery(Request $request, array $requestedRelations):\Illuminate\Database\Eloquent\Builder
+    {
+returnparent::buildIndexFetchQuery($request, $requestedRelations)
+->where('user_id', $request->user()->id);
+    }
+protectedfunctionafterSave(Request $request, Model $entity)
+    {
+        $validated = $request->validated();
+
+if (array_key_exists('category_ids',$validated)) {
+            $entity->categories()->sync($validated['category_ids']);
+        }
+if (array_key_exists('ingredients',$validated)) {
+            $ingredientIds =collect($validated['ingredients'])
+->pluck('id')
+->all();
+
+            $entity->ingredients()->sync($ingredientIds);
+        }
+
+    }
+
+
+}
+
+
+Bloque de ingredientes actualizado a sync por IDs:
+collect($validated['ingredients'])->pluck('id')->all()
+$entity->ingredients()->sync($ingredientIds);
+Comprobación ejecutada: RecipeController.php OK.
+Punto de partida actual:
+
+store/update ya sincronizan categorías e ingredientes con la estructura real de BD (sin amount/unit en pivote).
+Voy a crear 1 ingrediente asociado a la categoría 1 (que ya existe), así podremos probar store/update con ingredients sin errores de exists.
+23/02/26
+
+ Hoy vamos a crear los seeders para las tablas, pruebas en postman, el frontend para el crud y subirlo al server.
+
+Vamos a crear el documento para los seeders de categorías:
+
+
+Dentro agregamos nuestro array:
+<?php
+
+namespaceDatabase\Seeders;
+
+useApp\Models\Category;
+useIlluminate\Database\Seeder;
+
+classCategorySeederextendsSeeder
+{
+publicfunctionrun():void
+    {
+        $categories = [
+// A) Tipo de alimento
+'Verduras y hortalizas',
+'Verduras de hoja verde',
+'Hortalizas de raiz',
+'Hortalizas de fruto',
+'Hortalizas de tallo',
+'Cruciferas',
+'Legumbres frescas',
+'Tuberculos',
+
+'Frutas',
+'Frutas con hueso',
+'Frutas citricas',
+'Frutas tropicales',
+'Frutas del bosque',
+'Frutas deshidratadas',
+
+'Cereales y derivados',
+'Cereales con gluten',
+'Cereales sin gluten',
+'Harinas',
+'Panes',
+'Pastas',
+'Arroces',
+
+'Legumbres',
+'Legumbres secas',
+'Legumbres cocidas',
+
+'Lacteos',
+'Leche',
+'Quesos',
+'Yogures',
+'Nata y cremas',
+'Mantequilla',
+
+'Proteinas animales',
+'Carne roja',
+'Carne blanca',
+'Aves',
+'Cerdo',
+'Cordero',
+
+'Pescados y mariscos',
+'Pescado blanco',
+'Pescado azul',
+'Mariscos',
+'Moluscos',
+'Crustaceos',
+
+'Huevos',
+
+'Frutos secos y semillas',
+'Frutos secos',
+'Semillas',
+
+'Condimentos y especias',
+'Especias',
+'Hierbas aromaticas',
+'Salsas',
+'Vinagres',
+
+'Endulzantes',
+'Azucar',
+'Miel',
+'Edulcorantes',
+
+'Grasas',
+'Aceites vegetales',
+'Grasas animales',
+
+'Conservas',
+'Conservas vegetales',
+'Conservas de pescado',
+
+'Bebidas',
+'Bebidas vegetales',
+'Zumos',
+'Refrescos',
+'Bebidas alcoholicas',
+
+// B) Alergias / intolerancias
+'Sin gluten',
+'Con gluten',
+'Sin lactosa',
+'Con lactosa',
+'Sin proteina animal',
+'Sin huevo',
+'Sin frutos secos',
+'Sin soja',
+'Sin marisco',
+'Sin pescado',
+'Sin azucar anadido',
+'Bajo en sodio',
+'Sin conservantes',
+'Sin colorantes',
+
+// C) Tipo de dieta
+'Vegetariano',
+'Vegano',
+'Ovo-vegetariano',
+'Lacto-vegetariano',
+'Pescetariano',
+'Keto',
+'Paleo',
+'Mediterranea',
+'Alta en proteinas',
+'Baja en carbohidratos',
+'Baja en grasas',
+'Baja en calorias',
+'Hipocalorica',
+'Hipercalorica',
+'Sin procesados',
+
+// D) Funcionales / UX
+'Desayuno',
+'Almuerzo',
+'Cena',
+'Postre',
+'Snack',
+'Plato principal',
+'Guarnicion',
+'Aperitivo',
+'Rapido (< 20 min)',
+'Facil',
+'Economico',
+'Saludable',
+'Infantil',
+'Para eventos',
+'Batch cooking',
+        ];
+
+foreach (array_unique($categories) as $name) {
+Category::firstOrCreate(['name'=> $name]);
+        }
+    }
+}
+
+
+Ahora lo ponemos a punto en el DatabaseSeeders
+
+
+Finalmente ejecutamos el seeder:
+Comprobé por si acaso:
+
+
+Solo queda repetir el proceso con ingredientes y recetas
+IngredientSeeder:
+<?php
+
+namespaceDatabase\Seeders;
+
+useApp\Models\Category;
+useIlluminate\Database\Seeder;
+useIlluminate\Support\Facades\DB;
+
+classIngredientSeederextendsSeeder
+{
+publicfunctionrun():void
+    {
+        $ingredients = [
+            ['nombre'=>'Tomate', 'category'=>'Hortalizas de fruto'],
+            ['nombre'=>'Lechuga', 'category'=>'Verduras de hoja verde'],
+            ['nombre'=>'Cebolla', 'category'=>'Hortalizas de raiz'],
+            ['nombre'=>'Ajo', 'category'=>'Hortalizas de raiz'],
+            ['nombre'=>'Pimiento rojo', 'category'=>'Hortalizas de fruto'],
+            ['nombre'=>'Pepino', 'category'=>'Hortalizas de fruto'],
+            ['nombre'=>'Zanahoria', 'category'=>'Hortalizas de raiz'],
+            ['nombre'=>'Patata', 'category'=>'Tuberculos'],
+            ['nombre'=>'Arroz', 'category'=>'Arroces'],
+            ['nombre'=>'Pasta integral', 'category'=>'Pastas'],
+            ['nombre'=>'Lentejas', 'category'=>'Legumbres secas'],
+            ['nombre'=>'Garbanzos', 'category'=>'Legumbres secas'],
+            ['nombre'=>'Pechuga de pollo', 'category'=>'Aves'],
+            ['nombre'=>'Carne picada de ternera', 'category'=>'Carne roja'],
+            ['nombre'=>'Salmon', 'category'=>'Pescado azul'],
+            ['nombre'=>'Atun', 'category'=>'Pescado azul'],
+            ['nombre'=>'Huevo', 'category'=>'Huevos'],
+            ['nombre'=>'Queso rallado', 'category'=>'Quesos'],
+            ['nombre'=>'Yogur natural', 'category'=>'Yogures'],
+            ['nombre'=>'Aceite de oliva', 'category'=>'Aceites vegetales'],
+            ['nombre'=>'Sal', 'category'=>'Condimentos y especias'],
+            ['nombre'=>'Pimienta negra', 'category'=>'Especias'],
+            ['nombre'=>'Oregano', 'category'=>'Hierbas aromaticas'],
+            ['nombre'=>'Pan integral', 'category'=>'Panes'],
+            ['nombre'=>'Platano', 'category'=>'Frutas tropicales'],
+            ['nombre'=>'Fresa', 'category'=>'Frutas del bosque'],
+        ];
+
+foreach ($ingredients as $item) {
+            $categoryId =Category::query()
+->where('name', $item['category'])
+->value('id');
+
+if (!$categoryId) {
+continue;
+            }
+
+            $now =now();
+            $existing =DB::table('ingredients')
+->where('nombre', $item['nombre'])
+->value('id');
+
+if ($existing) {
+DB::table('ingredients')
+->where('id', $existing)
+->update([
+'category_id'=> $categoryId,
+'updated_at'=> $now,
+                    ]);
+            } else {
+DB::table('ingredients')->insert([
+'nombre'=> $item['nombre'],
+'category_id'=> $categoryId,
+'created_at'=> $now,
+'updated_at'=> $now,
+                ]);
+            }
+        }
+    }
+}
+
+
+RecipeSeeder:
+<?php
+
+namespaceDatabase\Seeders;
+
+useApp\Models\Category;
+useApp\Models\Ingredient;
+useApp\Models\Recipe;
+useApp\Models\User;
+useIlluminate\Database\Seeder;
+useIlluminate\Support\Facades\DB;
+
+classRecipeSeederextendsSeeder
+{
+publicfunctionrun():void
+    {
+        $usersByEmail =User::query()
+->whereIn('email', ['nuria@test.com', 'pablo@test.com'])
+->pluck('id', 'email')
+->toArray();
+
+if (!isset($usersByEmail['nuria@test.com']) ||!isset($usersByEmail['pablo@test.com'])) {
+return;
+        }
+
+Recipe::query()
+->whereIn('user_id', array_values($usersByEmail))
+->delete();
+
+        $recipes = [
+            [
+'email'=>'nuria@test.com',
+'titulo'=>'Ensalada mediterranea',
+'pasos'=>'Cortar tomate, pepino y cebolla. Aliñar con aceite de oliva, sal y oregano.',
+'time'=>15,
+'foto'=>'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Almuerzo', 'Cena', 'Saludable', 'Mediterranea'],
+'ingredients'=> ['Tomate', 'Pepino', 'Cebolla', 'Aceite de oliva', 'Sal', 'Oregano'],
+            ],
+            [
+'email'=>'nuria@test.com',
+'titulo'=>'Tortilla de patata',
+'pasos'=>'Pochar patata y cebolla, añadir huevo batido y cuajar en sartén.',
+'time'=>30,
+'foto'=>'https://images.unsplash.com/photo-1565895405138-6c3a1555da6a?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Cena', 'Plato principal', 'Facil'],
+'ingredients'=> ['Patata', 'Cebolla', 'Huevo', 'Aceite de oliva', 'Sal'],
+            ],
+            [
+'email'=>'nuria@test.com',
+'titulo'=>'Pasta integral con atun',
+'pasos'=>'Cocer pasta, mezclar con atun y tomate salteado, ajustar sal y pimienta.',
+'time'=>25,
+'foto'=>'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Almuerzo', 'Plato principal', 'Rapido (< 20 min)'],
+'ingredients'=> ['Pasta integral', 'Atun', 'Tomate', 'Aceite de oliva', 'Sal', 'Pimienta negra'],
+            ],
+            [
+'email'=>'nuria@test.com',
+'titulo'=>'Yogur con fresa y platano',
+'pasos'=>'Servir yogur natural y añadir fruta troceada.',
+'time'=>8,
+'foto'=>'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Desayuno', 'Snack', 'Facil'],
+'ingredients'=> ['Yogur natural', 'Fresa', 'Platano'],
+            ],
+            [
+'email'=>'nuria@test.com',
+'titulo'=>'Pollo al horno con zanahoria',
+'pasos'=>'Hornear pechuga de pollo con zanahoria y condimentos hasta dorar.',
+'time'=>40,
+'foto'=>'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Cena', 'Alta en proteinas', 'Plato principal'],
+'ingredients'=> ['Pechuga de pollo', 'Zanahoria', 'Aceite de oliva', 'Sal', 'Pimienta negra'],
+            ],
+            [
+'email'=>'pablo@test.com',
+'titulo'=>'Arroz con verduras',
+'pasos'=>'Sofreir verduras y cocer con arroz hasta que quede en su punto.',
+'time'=>35,
+'foto'=>'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Almuerzo', 'Vegetariano', 'Economico'],
+'ingredients'=> ['Arroz', 'Tomate', 'Pimiento rojo', 'Cebolla', 'Aceite de oliva', 'Sal'],
+            ],
+            [
+'email'=>'pablo@test.com',
+'titulo'=>'Lentejas guisadas',
+'pasos'=>'Cocer lentejas con verduras y ajustar condimentos al final.',
+'time'=>50,
+'foto'=>'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Almuerzo', 'Plato principal', 'Batch cooking'],
+'ingredients'=> ['Lentejas', 'Cebolla', 'Zanahoria', 'Ajo', 'Aceite de oliva', 'Sal'],
+            ],
+            [
+'email'=>'pablo@test.com',
+'titulo'=>'Salmon a la plancha',
+'pasos'=>'Marcar salmon en plancha caliente y servir con ensalada.',
+'time'=>20,
+'foto'=>'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Cena', 'Saludable', 'Alta en proteinas'],
+'ingredients'=> ['Salmon', 'Lechuga', 'Tomate', 'Aceite de oliva', 'Sal'],
+            ],
+            [
+'email'=>'pablo@test.com',
+'titulo'=>'Bocadillo integral de atun',
+'pasos'=>'Rellenar pan integral con atun y tomate en rodajas.',
+'time'=>10,
+'foto'=>'https://images.unsplash.com/photo-1550507992-eb63ffee0847?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Desayuno', 'Snack', 'Rapido (< 20 min)'],
+'ingredients'=> ['Pan integral', 'Atun', 'Tomate', 'Aceite de oliva'],
+            ],
+            [
+'email'=>'pablo@test.com',
+'titulo'=>'Ensalada de garbanzos',
+'pasos'=>'Mezclar garbanzos cocidos con tomate, cebolla y aliño.',
+'time'=>18,
+'foto'=>'https://images.unsplash.com/photo-1514995669114-6081e934b693?auto=format&fit=crop&w=1200&q=80',
+'categories'=> ['Almuerzo', 'Saludable', 'Sin procesados'],
+'ingredients'=> ['Garbanzos', 'Tomate', 'Cebolla', 'Aceite de oliva', 'Sal'],
+            ],
+        ];
+
+foreach ($recipes as $item) {
+            $userId = $usersByEmail[$item['email']];
+            $now =now();
+            $recipeId = (int) DB::table('recipes')->insertGetId([
+'user_id'=> $userId,
+'titulo'=> $item['titulo'],
+'pasos'=> $item['pasos'],
+'time'=> $item['time'],
+'foto'=> $item['foto'],
+'created_at'=> $now,
+'updated_at'=> $now,
+            ]);
+
+            $recipe =Recipe::query()->find($recipeId);
+if (!$recipe) {
+continue;
+            }
+
+            $categoryIds =Category::query()
+->whereIn('name', $item['categories'])
+->pluck('id')
+->all();
+
+            $ingredientIds =Ingredient::query()
+->whereIn('nombre', $item['ingredients'])
+->pluck('id')
+->all();
+
+            $recipe->categories()->sync($categoryIds);
+            $recipe->ingredients()->sync($ingredientIds);
+        }
+    }
+}
+
+
+DatabaseSeeder:
+<?php
+
+namespaceDatabase\Seeders;
+
+useIlluminate\Database\Seeder;
+
+classDatabaseSeederextendsSeeder
+{
+publicfunctionrun():void
+    {
+$this->call([
+UserSeeder::class,
+CategorySeeder::class,
+IngredientSeeder::class,
+RecipeSeeder::class,
+        ]);
+    }
+}
+
+
+
+Ahora vamos a crear las peticiones en postman : 
+
+Primero ejecutamos la que teníamos de login, para guardarnos el token:
+6|yCMyp1fh44bRMqVYA4LmUn30L5txgSmvuW4E1sGA84e4a988
+
+Segundo, vamos a create y agregamos el token del usuario:
+
+
+Y importante el cuerpo pq ahora tenemos más propiedades:
+
+Ejecutamos y listo el create:
+
+Tercero, creamos la petición de edición. Para ello creamos una nueva petición:
+PATCH /api/recipes/{id_de_receta}
+Metemos en autorización el token de bearer.
+Y en headers ponemos : 
+Accept: application/json
+Content-Type: application/json
+Y en el body:
+lo queremos cambiar en json raw
+
+
+Texto corregido para pegar en tu Diario del Proyecto (copia/pega)
+Te lo dejo listo para que lo sustituyas donde lo tengas mal:
+Cambio de criterio en listados de recetas (A01 / diseño de endpoints) Inicialmente, durante el hardening de seguridad A01 (Broken Access Control), se añadió un filtro en RecipeController mediante buildIndexFetchQuery() para que GET /api/recipes devolviera únicamente las recetas del usuario autenticado (where user_id = auth()->id()), evitando exposición de datos de otros usuarios (IDOR). Posteriormente, se decidió separar el comportamiento en dos endpoints: GET /api/recipes como listado global (todas las recetas) y GET /api/my-recipes como listado privado (solo recetas del usuario logueado). Para ello, se eliminó el override buildIndexFetchQuery() del RecipeController, manteniendo my-recipes como endpoint específico del usuario. Las operaciones de modificación (update/delete) siguen protegidas por Policy owner-only.
+
+Nota importante (para que no te explote luego en la demo)
+Aunque /api/recipes sea global, tu RecipePolicy@view puede seguir siendo owner-only. Eso significa:
+podrás listar recetas de todos en /api/recipes
+pero si intentas GET /api/recipes/{id} de otra persona, podrías comerte un 
+403 (si view es owner-only)
+Si en tu app quieres ver el detalle público desde el feed (Home → RecipeDetail), entonces en la doc anota también que habría que ajustar RecipePolicy@view para permitir ver recetas ajenas (pero sin permitir edit/delete, que eso sí debe quedarse owner-only).
+Si me pegas el trocito exacto de tu diario donde lo pusiste “mal”, te lo reescribo manteniendo tu estilo y dejando el párrafo perfectamente integrado (sin que parezca pegote).
+
+
