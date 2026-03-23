@@ -13,6 +13,11 @@ class RecipeController extends Controller
     protected $model = Recipe::class;
     protected $policy = RecipePolicy::class;
 
+    public function searchableBy(): array
+    {
+        return ['titulo', 'pasos'];
+    }
+
     protected function beforeStore(Request $request, Model $entity)
     {
         $entity->user_id = $request->user()->id;

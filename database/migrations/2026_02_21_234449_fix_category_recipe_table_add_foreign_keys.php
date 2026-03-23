@@ -1,28 +1,18 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('category_recipe', function (Blueprint $table) {
-            $table->foreignId('recipe_id')->after('id')->constrained()->cascadeOnDelete();
-            $table->foreignId('category_id')->after('recipe_id')->constrained()->cascadeOnDelete();
-
-            $table->unique(['recipe_id', 'category_id']);
-        });
+        // The pivot table was already created with both foreign keys and the
+        // composite unique index, so this historical "fix" must stay as a no-op
+        // to keep fresh migrations reproducible.
     }
 
     public function down(): void
     {
-        Schema::table('category_recipe', function (Blueprint $table) {
-            $table->dropUnique(['recipe_id', 'category_id']);
-            $table->dropForeign(['recipe_id']);
-            $table->dropForeign(['category_id']);
-            $table->dropColumn(['recipe_id', 'category_id']);
-        });
+        //
     }
 };

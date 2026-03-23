@@ -15,8 +15,14 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/me', fn(Request $request) => $request->user());
     Route::post('/logout', [AuthTokenController::class, 'logout']);
     Route::get('/my-recipes', [AuthTokenController::class, 'myRecipes']);
+
+    Orion::resource('recipes', RecipeController::class, [
+        'only' => ['store', 'update', 'destroy'],
+    ])->withoutBatch();
 });
 
-Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-    Orion::resource('recipes', RecipeController::class)->withoutBatch();
+Route::middleware(['throttle:api'])->group(function () {
+    Orion::resource('recipes', RecipeController::class, [
+        'only' => ['index', 'show', 'search'],
+    ])->withoutBatch();
 });

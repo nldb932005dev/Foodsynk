@@ -10,15 +10,15 @@ use App\Models\User;
 
 class RecipePolicy
 {
-    public function viewAny(User $user): bool
+    public function viewAny(?User $user): bool
     {
         return true;
     }
 
 
-    public function view(User $user, Recipe $recipe): bool
+    public function view(?User $user, Recipe $recipe): bool
     {
-    return $recipe->user_id === $user->id;
+        return true;
     }
 
 
