@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Ingredient extends Model
 {
     protected $fillable = [
-        'name',
+        'nombre',
         'category_id',
     ];
 

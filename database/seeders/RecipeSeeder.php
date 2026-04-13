@@ -128,6 +128,7 @@ class RecipeSeeder extends Seeder
                 'pasos' => $item['pasos'],
                 'time' => $item['time'],
                 'foto' => $item['foto'],
+                'status' => 'published',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
