@@ -46,12 +46,33 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-   public function recipes()
-   {
-       return $this->hasMany(\App\Models\Recipe::class);
-   }
-   public function accessLogs()
-   {
-       return $this->hasMany(\App\Models\UserAccessLog::class);
-   }
+    public function recipes()
+    {
+        return $this->hasMany(\App\Models\Recipe::class);
+    }
+
+    public function likes()
+    {
+        return $this->hasMany(\App\Models\Like::class);
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(\App\Models\Favorite::class);
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(\App\Models\Comment::class);
+    }
+
+    public function menus()
+    {
+        return $this->hasMany(\App\Models\Menu::class);
+    }
+
+    public function accessLogs()
+    {
+        return $this->hasMany(\App\Models\UserAccessLog::class);
+    }
 }

@@ -3,15 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Category extends Model
+class Menu extends Model
 {
-    protected $fillable = ['name', 'status'];
-        public function ingredients(): HasMany
+    protected $fillable = [
+        'nombre',
+        'user_id',
+    ];
+
+    public function user(): BelongsTo
     {
-        return $this->hasMany(Ingredient::class);
+        return $this->belongsTo(User::class);
     }
 
     public function recipes(): BelongsToMany
