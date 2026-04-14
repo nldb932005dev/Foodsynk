@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Api\AuthTokenController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\IngredientController;
+use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\RecipeController;
 use App\Http\Controllers\Api\RegisteredUserController;
 use Illuminate\Http\Request;
@@ -29,6 +32,19 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Orion::resource('ingredients', IngredientController::class, [
         'only' => ['store'],
     ])->withoutBatch();
+
+    // Likes
+    Route::post('/recipes/{recipe}/like', [LikeController::class, 'store']);
+    Route::delete('/recipes/{recipe}/like', [LikeController::class, 'destroy']);
+
+    // Favoritos
+    Route::post('/recipes/{recipe}/favorite', [FavoriteController::class, 'store']);
+    Route::delete('/recipes/{recipe}/favorite', [FavoriteController::class, 'destroy']);
+    Route::get('/my-favorites', [FavoriteController::class, 'index']);
+
+    // Comentarios (escritura)
+    Route::post('/recipes/{recipe}/comments', [CommentController::class, 'store']);
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 });
 
 // Rutas públicas
@@ -44,4 +60,7 @@ Route::middleware(['throttle:api'])->group(function () {
     Orion::resource('ingredients', IngredientController::class, [
         'only' => ['index', 'show'],
     ])->withoutBatch();
+
+    // Comentarios (lectura pública)
+    Route::get('/recipes/{recipe}/comments', [CommentController::class, 'index']);
 });
