@@ -25,5 +25,18 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@foodsynk.com'],
+            [
+                'name' => 'Admin',
+                'password' => Hash::make('Admin1234!'),
+            ]
+        );
+
+        if (! $admin->is_admin) {
+            $admin->is_admin = true;
+            $admin->save();
+        }
     }
 }
