@@ -6,16 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Ingredient extends Model
+class Menu extends Model
 {
     protected $fillable = [
         'nombre',
-        'category_id',
+        'user_id',
     ];
 
-    public function category(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(User::class);
     }
 
     public function recipes(): BelongsToMany
@@ -23,4 +23,3 @@ class Ingredient extends Model
         return $this->belongsToMany(Recipe::class);
     }
 }
-

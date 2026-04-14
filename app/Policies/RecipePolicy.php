@@ -18,7 +18,12 @@ class RecipePolicy
 
     public function view(?User $user, Recipe $recipe): bool
     {
-        return true;
+        if ($recipe->status === 'published') {
+            return true;
+        }
+
+        // draft: solo el propietario puede verlo
+        return $user !== null && $user->id === $recipe->user_id;
     }
 
 

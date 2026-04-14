@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Category extends Model
 {
-     protected $fillable = ['name'];
+    protected $fillable = ['name', 'status'];
         public function ingredients(): HasMany
     {
         return $this->hasMany(Ingredient::class);

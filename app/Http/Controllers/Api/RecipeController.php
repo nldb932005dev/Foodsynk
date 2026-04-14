@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Recipe;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Orion\Http\Controllers\Controller;
 use Orion\Http\Requests\Request;
@@ -16,6 +17,16 @@ class RecipeController extends Controller
     public function searchableBy(): array
     {
         return ['titulo', 'pasos'];
+    }
+
+    protected function buildIndexFetchQuery(Request $request, array $requestedRelations): Builder
+    {
+        return parent::buildIndexFetchQuery($request, $requestedRelations)->published();
+    }
+
+    protected function buildSearchFetchQuery(Request $request, array $requestedRelations): Builder
+    {
+        return parent::buildSearchFetchQuery($request, $requestedRelations)->published();
     }
 
     protected function beforeStore(Request $request, Model $entity)
